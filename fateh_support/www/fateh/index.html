@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="{{ brand_primary_color }}" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>{{ brand_name }}</title>
+    <link rel="manifest" href="{{ asset_base }}/manifest.webmanifest" />
+    <link rel="icon" href="{{ asset_base }}/icons/icon-192.png" sizes="192x192" type="image/png" />
+    <link rel="apple-touch-icon" href="{{ asset_base }}/icons/icon-192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="{{ asset_base }}/index.css?v={{ bundle_version }}" />
+    <script>
+      window.FatehBoot = {
+        csrf_token: "{{ csrf_token }}",
+        vapid_public_key: "{{ vapid_public_key }}",
+        brand: { name: "{{ brand_name }}", primary: "{{ brand_primary_color }}" },
+        asset_base: "{{ asset_base }}",
+        bundle_version: "{{ bundle_version }}"
+      };
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="fateh-fallback" style="display:none;position:fixed;inset:0;padding:24px;font-family:ui-sans-serif,system-ui;color:#0a0a0a;background:#fff;overflow:auto;">
+      <h2 style="margin:0 0 8px;font-size:18px;">Fateh Trading</h2>
+      <p style="color:#374151;font-size:14px;margin:0 0 12px;">App failed to load. Capture the error below and send it to support.</p>
+      <pre id="fateh-error" style="background:#FEF2F2;color:#991B1B;border:1px solid #FECACA;border-radius:8px;padding:12px;font-size:12px;white-space:pre-wrap;word-break:break-word;"></pre>
+      <button onclick="location.reload(true)" style="margin-top:12px;padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">Retry</button>
+    </div>
+    <script>
+      window.fatehErrors = [];
+      function fatehShowError(msg) {
+        try {
+          var fb = document.getElementById("fateh-fallback");
+          var pre = document.getElementById("fateh-error");
+          if (fb) fb.style.display = "block";
+          if (pre) pre.textContent += msg + "\n\n";
+        } catch (e) {}
+      }
+      window.addEventListener("error", function (e) {
+        var msg = (e && e.message) || "Unknown error";
+        var src = (e && (e.filename || (e.target && e.target.src))) || "";
+        window.fatehErrors.push({ msg: msg, src: src });
+        fatehShowError(msg + (src ? "\nSource: " + src : ""));
+      });
+      window.addEventListener("unhandledrejection", function (e) {
+        var msg = (e && e.reason && (e.reason.message || String(e.reason))) || "Unknown rejection";
+        window.fatehErrors.push({ msg: msg });
+        fatehShowError("Unhandled promise: " + msg);
+      });
+      // Surface fallback if Vue hasn't rendered after 4s
+      setTimeout(function () {
+        var app = document.getElementById("app");
+        if (app && !app.firstChild) {
+          fatehShowError("App did not mount within 4s. Check the network tab for failed module loads.");
+        }
+      }, 4000);
+    </script>
+    <script type="module" src="{{ asset_base }}/index.js?v={{ bundle_version }}"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .register("{{ asset_base }}/fateh-sw.js", { scope: "/fateh/" })
+          .catch(function () {});
+      }
+    </script>
+  </body>
+</html>

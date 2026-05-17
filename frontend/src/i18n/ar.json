@@ -1,0 +1,116 @@
+{
+  "app": {
+    "name": "فاتح للتجارة",
+    "tagline": "رؤية المخزون والموافقات ببساطة."
+  },
+  "login": {
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "submit": "تسجيل الدخول",
+    "error_generic": "فشل تسجيل الدخول. تحقق من البريد وكلمة المرور."
+  },
+  "nav": {
+    "items": "الأصناف",
+    "approvals": "الموافقات",
+    "my_requests": "طلباتي",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج"
+  },
+  "items": {
+    "kicker": "المخزون الحي",
+    "search_placeholder": "ابحث بالرمز أو الاسم أو الباركود",
+    "recent": "عمليات البحث الأخيرة",
+    "no_results": "لا توجد نتائج مطابقة.",
+    "stock_totals": "إجمالي المخزون",
+    "prices": "الأسعار",
+    "stock": "المخزون",
+    "valuation_rate": "سعر التقييم",
+    "last_purchase_rate": "آخر سعر شراء",
+    "items_label": "صنف",
+    "load_more": "تحميل المزيد",
+    "empty_title": "لا يوجد شيء بعد",
+    "empty_body": "لا توجد أصناف تطابق المرشحات. جرّب تغيير الشركة أو المستودع أعلاه.",
+    "scope_label": "النطاق"
+  },
+  "filters": {
+    "company": "الشركة",
+    "warehouse": "المستودع",
+    "all_companies": "كل الشركات",
+    "all_warehouses": "كل المستودعات",
+    "sort": "ترتيب",
+    "sort_qty_desc": "الكمية ↓",
+    "sort_qty_asc": "الكمية ↑",
+    "sort_name": "أ–ي"
+  },
+  "stock": {
+    "warehouse": "المستودع",
+    "actual": "الفعلي",
+    "reserved": "المحجوز",
+    "projected": "المتوقع",
+    "ordered": "المطلوب"
+  },
+  "prices": {
+    "price_list": "قائمة الأسعار",
+    "rate": "السعر",
+    "uom": "الوحدة",
+    "valid_from": "ساري من"
+  },
+  "approvals": {
+    "inbox": "الموافقات",
+    "filter_all": "الكل",
+    "filter_pending": "قيد الانتظار",
+    "filter_approved": "معتمدة",
+    "filter_rejected": "مرفوضة",
+    "filter_mine": "طلباتي",
+    "empty_state": "لا توجد طلبات مطابقة.",
+    "view": "عرض التفاصيل",
+    "requester": "مقدم الطلب",
+    "customer": "العميل",
+    "source": "المصدر",
+    "variance": "الفارق",
+    "justification": "المبرر",
+    "no_justification": "لا يوجد مبرر.",
+    "lines": "بنود أقل من التكلفة",
+    "item": "الصنف",
+    "qty": "الكمية",
+    "proposed_rate": "السعر المقترح",
+    "cost_floor_rate": "الحد الأدنى",
+    "open_source": "فتح مستند المصدر",
+    "approve": "اعتماد",
+    "reject": "رفض",
+    "toast_approved": "تم اعتماد الطلب.",
+    "toast_rejected": "تم رفض الطلب.",
+    "decision_note": "ملاحظة القرار",
+    "note_required_reject": "يلزم إضافة ملاحظة عند الرفض.",
+    "note_optional": "ملاحظة اختيارية لمقدم الطلب.",
+    "confirm_approve": "اعتماد هذا الطلب؟",
+    "confirm_reject": "رفض هذا الطلب؟",
+    "decided_at": "تاريخ القرار",
+    "decided_by": "صاحب القرار",
+    "age": "المدة",
+    "variance_high": "فارق كبير",
+    "attach_justification": "إضافة مبرر"
+  },
+  "my_requests": {
+    "empty_state": "لم ترفع أي طلبات بعد.",
+    "status": "الحالة"
+  },
+  "settings": {
+    "language": "اللغة",
+    "sign_out": "تسجيل الخروج",
+    "push_enable": "تفعيل الإشعارات",
+    "push_disabled": "الإشعارات غير متاحة في هذا المتصفح.",
+    "version": "الإصدار"
+  },
+  "common": {
+    "search": "بحث",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "confirm": "تأكيد",
+    "close": "إغلاق",
+    "loading": "جارٍ التحميل…",
+    "retry": "إعادة",
+    "error": "حدث خطأ",
+    "just_now": "الآن"
+  }
+}

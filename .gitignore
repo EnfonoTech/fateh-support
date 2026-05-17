@@ -1,0 +1,32 @@
+# Frappe
+*.pyc
+__pycache__/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+.pnpm-store/
+*.tsbuildinfo
+
+# Frontend build outputs (tracked in public/frontend only after build)
+frontend/dist/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets
+*.env
+*.pem
+vapid_keys.json
+
+# Android (v1.1)
+android-capacitor/android/app/build/
+android-capacitor/node_modules/
+android-capacitor/www/
+android-capacitor/keystore/*.keystore

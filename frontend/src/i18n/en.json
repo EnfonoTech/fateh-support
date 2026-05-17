@@ -1,0 +1,116 @@
+{
+  "app": {
+    "name": "Fateh Trading",
+    "tagline": "Stock visibility and approvals, simplified."
+  },
+  "login": {
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "error_generic": "Sign-in failed. Check your email and password."
+  },
+  "nav": {
+    "items": "Items",
+    "approvals": "Approvals",
+    "my_requests": "My Requests",
+    "settings": "Settings",
+    "logout": "Sign out"
+  },
+  "items": {
+    "kicker": "Live inventory",
+    "search_placeholder": "Search by code, name, or barcode",
+    "recent": "Recent searches",
+    "no_results": "No items match your search.",
+    "stock_totals": "Total across warehouses",
+    "prices": "Prices",
+    "stock": "Stock",
+    "valuation_rate": "Valuation rate",
+    "last_purchase_rate": "Last purchase rate",
+    "items_label": "items",
+    "load_more": "Load more",
+    "empty_title": "Nothing here yet",
+    "empty_body": "No items match the current filters. Adjust the company or warehouse above.",
+    "scope_label": "Scope"
+  },
+  "filters": {
+    "company": "Company",
+    "warehouse": "Warehouse",
+    "all_companies": "All companies",
+    "all_warehouses": "All warehouses",
+    "sort": "Sort",
+    "sort_qty_desc": "Qty ↓",
+    "sort_qty_asc": "Qty ↑",
+    "sort_name": "A–Z"
+  },
+  "stock": {
+    "warehouse": "Warehouse",
+    "actual": "Actual",
+    "reserved": "Reserved",
+    "projected": "Projected",
+    "ordered": "Ordered"
+  },
+  "prices": {
+    "price_list": "Price list",
+    "rate": "Rate",
+    "uom": "UOM",
+    "valid_from": "Valid from"
+  },
+  "approvals": {
+    "inbox": "Approvals",
+    "filter_all": "All",
+    "filter_pending": "Pending",
+    "filter_approved": "Approved",
+    "filter_rejected": "Rejected",
+    "filter_mine": "Mine",
+    "empty_state": "No requests match this filter.",
+    "view": "View details",
+    "requester": "Requester",
+    "customer": "Customer",
+    "source": "Source",
+    "variance": "Variance",
+    "justification": "Justification",
+    "no_justification": "No justification provided.",
+    "lines": "Below-cost lines",
+    "item": "Item",
+    "qty": "Qty",
+    "proposed_rate": "Proposed rate",
+    "cost_floor_rate": "Cost floor",
+    "open_source": "Open source document",
+    "approve": "Approve",
+    "reject": "Reject",
+    "toast_approved": "Request approved.",
+    "toast_rejected": "Request rejected.",
+    "decision_note": "Decision note",
+    "note_required_reject": "A note is required when rejecting.",
+    "note_optional": "Optional note for the requester.",
+    "confirm_approve": "Approve this request?",
+    "confirm_reject": "Reject this request?",
+    "decided_at": "Decided",
+    "decided_by": "Decided by",
+    "age": "Age",
+    "variance_high": "High variance",
+    "attach_justification": "Attach a justification"
+  },
+  "my_requests": {
+    "empty_state": "You haven't raised any requests yet.",
+    "status": "Status"
+  },
+  "settings": {
+    "language": "Language",
+    "sign_out": "Sign out",
+    "push_enable": "Enable notifications",
+    "push_disabled": "Notifications disabled in this browser.",
+    "version": "Version"
+  },
+  "common": {
+    "search": "Search",
+    "cancel": "Cancel",
+    "save": "Save",
+    "confirm": "Confirm",
+    "close": "Close",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "error": "Something went wrong",
+    "just_now": "just now"
+  }
+}

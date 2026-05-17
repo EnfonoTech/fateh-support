@@ -1,0 +1,32 @@
+[project]
+name = "fateh_support"
+authors = [
+    { name = "Enfono Technologies", email = "hello@enfono.com" },
+]
+description = "Fateh Trading — ERPNext Support App (Stock Visibility & Below-Cost Approval)."
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    "pywebpush>=1.14.0",
+    "bcrypt>=4.0.1",
+    "py-vapid>=1.9.0",
+]
+
+[build-system]
+requires = ["flit_core>=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.module]
+name = "fateh_support"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"

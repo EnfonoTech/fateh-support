@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Fateh Trading</string>
+    <string name="title_activity_main">Fateh Trading</string>
+    <string name="package_name">com.enfono.fatehtrading</string>
+    <string name="custom_url_scheme">com.enfono.fatehtrading</string>
+</resources>
