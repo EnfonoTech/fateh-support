@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import type { PriceResult } from "@/types";
 import Money from "@/components/Money.vue";
 
-const props = defineProps<{ prices: PriceResult }>();
-
-const baseCurrency = computed(() => props.prices.rows[0]?.currency || null);
+defineProps<{ prices: PriceResult }>();
 </script>
 
 <template>
