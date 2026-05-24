@@ -31,17 +31,6 @@ const baseCurrency = computed(() => props.prices.rows[0]?.currency || null);
         </div>
       </div>
     </div>
-
-    <div v-if="prices.is_approver && prices.valuation_rate != null" class="valuation">
-      <div class="v-row">
-        <span class="label-xs">{{ $t("items.valuation_rate") }}</span>
-        <Money :value="prices.valuation_rate" :currency="baseCurrency" class="v-val" bold />
-      </div>
-      <div class="v-row" v-if="prices.last_purchase_rate != null">
-        <span class="label-xs">{{ $t("items.last_purchase_rate") }}</span>
-        <Money :value="prices.last_purchase_rate" :currency="baseCurrency" class="v-val" bold />
-      </div>
-    </div>
   </div>
 </template>
 
@@ -99,24 +88,5 @@ const baseCurrency = computed(() => props.prices.rows[0]?.currency || null);
 .right :deep(.amount) {
   font-size: 20px;
   color: var(--ink);
-}
-
-.valuation {
-  background: var(--paper);
-  border-top: 2px solid var(--ink);
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.v-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.v-val :deep(.amount) {
-  color: var(--brand-secondary);
 }
 </style>
