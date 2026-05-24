@@ -42,7 +42,7 @@ async function onSubmit() {
       <form class="form" @submit.prevent="onSubmit">
         <label class="field">
           <span>{{ $t("login.email") }}</span>
-          <input v-model="email" type="email" required autocomplete="email" />
+          <input v-model="email" type="text" required autocomplete="email" />
         </label>
         <label class="field">
           <span>{{ $t("login.password") }}</span>
