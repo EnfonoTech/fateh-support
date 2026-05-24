@@ -327,6 +327,7 @@ def prices(item_code: str) -> dict[str, Any]:
     )
 
     # Drop cost-floor Price List rows for non-approvers.
+    # Always drop inter-company price lists.
     rows: list[dict[str, Any]] = []
     for r in raw:
         if (
@@ -335,6 +336,8 @@ def prices(item_code: str) -> dict[str, Any]:
             and r.price_list
             and r.price_list.lower() == cost_floor_list.lower()
         ):
+            continue
+        if r.price_list and "inter" in r.price_list.lower():
             continue
         if not frappe.has_permission("Price List", ptype="read", doc=r.price_list):
             continue
