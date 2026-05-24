@@ -1,1 +1,0 @@
-import{h as s,E as n,f as r,z as o,y as a,t as l}from"../index.js";const _=s({__name:"LangToggle",setup(p){const e=n();return(c,t)=>(l(),r("button",{class:"ghost",onClick:t[0]||(t[0]=f=>o(e).toggle())},a(o(e).locale==="ar"?"EN":"عربي"),1))}});export{_};
