@@ -19,13 +19,25 @@ import frappe
 from frappe import _
 
 
+def _get_applicable_price_list(doc, settings) -> str:
+    """Return the correct floor price list based on customer type."""
+    customer = getattr(doc, "customer", None) or getattr(doc, "party_name", None)
+    if customer:
+        is_internal, represents = frappe.db.get_value(
+            "Customer", customer, ["is_internal_customer", "represents_company"]
+        ) or (0, None)
+        if is_internal and represents:
+            return (settings.get("inter_company_price_list") or "").strip()
+    return (settings.get("cost_floor_price_list") or "").strip()
+
+
 def check_cost_floor(doc, method: str | None = None) -> None:
     """`before_submit` hook. May `frappe.throw()` to block submit."""
     if getattr(doc, "custom_approval_status", None) == "Approved":
         return
 
     settings = frappe.get_cached_doc("Fateh Support Settings")
-    cost_floor_list = (settings.get("cost_floor_price_list") or "").strip()
+    cost_floor_list = _get_applicable_price_list(doc, settings)
     if not cost_floor_list:
         return
 
