@@ -17,10 +17,10 @@ const config: CapacitorConfig = {
   appName: "Fateh Trading",
   webDir: "www",
   server: {
-    url: "https://trading-demo.enfonoerp.com/fateh/",
+    url: "https://rmaxerp.enfonoerp.com/fateh/",
     androidScheme: "https",
     cleartext: false,
-    allowNavigation: ["trading-demo.enfonoerp.com", "*.enfonoerp.com"],
+    allowNavigation: ["rmaxerp.enfonoerp.com", "erp.rmaxled.com", "*.enfonoerp.com"],
   },
   android: {
     backgroundColor: "#ffffff",
