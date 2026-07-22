@@ -8,6 +8,7 @@
  "field_order": [
   "approval_section",
   "cost_floor_price_list",
+  "inter_company_price_list",
   "show_valuation_to_approvers",
   "branding_section",
   "brand_name",
@@ -36,7 +37,8 @@
  ],
  "fields": [
   {"fieldname": "approval_section", "fieldtype": "Section Break", "label": "Approval"},
-  {"fieldname": "cost_floor_price_list", "fieldtype": "Link", "label": "Cost Floor Price List", "options": "Price List", "reqd": 0, "description": "Price List holding minimum allowed selling rates. Leave blank to disable the approval gate."},
+  {"fieldname": "cost_floor_price_list", "fieldtype": "Link", "label": "Cost Floor Price List", "options": "Price List", "reqd": 0, "description": "Price List holding minimum allowed selling rates for regular customers. Leave blank to disable the approval gate."},
+  {"fieldname": "inter_company_price_list", "fieldtype": "Link", "label": "Inter-Company Price List", "options": "Price List", "reqd": 0, "description": "Price List used to validate rates for inter-company customers (is_internal_customer = 1). Leave blank to skip validation for inter-company sales."},
   {"fieldname": "show_valuation_to_approvers", "fieldtype": "Check", "label": "Show Valuation Rate to Approvers", "default": 1},
   {"fieldname": "branding_section", "fieldtype": "Section Break", "label": "Branding"},
   {"fieldname": "brand_name", "fieldtype": "Data", "label": "Brand Name", "default": "Fateh Trading"},
