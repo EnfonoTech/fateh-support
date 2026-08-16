@@ -7,7 +7,7 @@ from typing import Any
 
 import frappe
 from frappe import _
-from frappe.utils import cint, now_datetime
+from frappe.utils import cint, cstr, now_datetime
 
 
 def _is_approver(user: str | None = None) -> bool:
@@ -222,7 +222,10 @@ def decide_bulk(names: str | list[str], action: str, note: str = "") -> dict[str
 
     if isinstance(names, str):
         names = json.loads(names)
-    if not isinstance(names, (list, tuple)) or not names:
+    # NB: `list` is shadowed by the REST alias defined above — never use the
+    # bare builtin in this module.
+    names = [cstr(n) for n in (names or []) if cstr(n)]
+    if not names:
         frappe.throw(_("Select at least one request."))
 
     done: list[str] = []
