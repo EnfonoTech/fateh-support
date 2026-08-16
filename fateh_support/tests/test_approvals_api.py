@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -62,3 +64,40 @@ class TestApprovalsApi(FrappeTestCase):
         approvals_api.decide(name=self.name, action="approve", note="OK")
         with self.assertRaises(frappe.ValidationError):
             approvals_api.decide(name=self.name, action="reject", note="changed mind")
+
+    def test_bulk_decide_approves_every_request(self) -> None:
+        second = _make_request(self.ctx)
+        frappe.set_user(self.ctx["approver"])
+        result = approvals_api.decide_bulk(
+            names=[self.name, second], action="approve", note="batch"
+        )
+        self.assertEqual(sorted(result["done"]), sorted([self.name, second]))
+        self.assertEqual(result["failed"], [])
+        for name in (self.name, second):
+            self.assertEqual(
+                frappe.db.get_value("Sales Price Approval Request", name, "status"), "Approved"
+            )
+
+    def test_bulk_decide_accepts_json_names(self) -> None:
+        """The desk list view posts `names` as a JSON string, not a list."""
+        frappe.set_user(self.ctx["approver"])
+        result = approvals_api.decide_bulk(
+            names=json.dumps([self.name]), action="approve", note=""
+        )
+        self.assertEqual(result["done"], [self.name])
+
+    def test_bulk_decide_isolates_failures(self) -> None:
+        already = _make_request(self.ctx)
+        frappe.set_user(self.ctx["approver"])
+        approvals_api.decide(name=already, action="approve", note="first")
+
+        result = approvals_api.decide_bulk(
+            names=[self.name, already], action="approve", note="batch"
+        )
+        self.assertEqual(result["done"], [self.name])
+        self.assertEqual([f["name"] for f in result["failed"]], [already])
+
+    def test_bulk_decide_requires_approver(self) -> None:
+        frappe.set_user(self.ctx["requester"])
+        with self.assertRaises(frappe.PermissionError):
+            approvals_api.decide_bulk(names=[self.name], action="approve", note="")

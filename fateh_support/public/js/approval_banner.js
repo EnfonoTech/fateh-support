@@ -61,9 +61,9 @@
           <div style="font-size:12px;opacity:0.85;">
             ${
               status === "Rejected"
-                ? "Update rates above the cost floor, save, and submit again to raise a new approval."
+                ? "Raise rates to the minimum selling price, save, and submit again to raise a new approval."
                 : status === "Pending Approval"
-                ? "Approver will decide in the mobile app."
+                ? "An approver will decide in the mobile app or from the request in desk."
                 : ""
             }
           </div>

@@ -1,4 +1,4 @@
-import { call, setCredentials } from "./client";
+import { call, clearCsrfToken, setCredentials, setCsrfToken } from "./client";
 import type { Profile } from "@/types";
 
 /**
@@ -12,11 +12,15 @@ import type { Profile } from "@/types";
  */
 export async function login(email: string, password: string): Promise<Profile> {
   await call("login", { body: { usr: email, pwd: password } });
+  // `post_login` rotated the session, so the token we posted with is dead.
+  // `me()` carries the new one — pick it up before any further POST.
   return me();
 }
 
 export async function me(): Promise<Profile> {
-  return call<Profile>("fateh_support.api.auth.me", { method: "GET" });
+  const profile = await call<Profile>("fateh_support.api.auth.me", { method: "GET" });
+  setCsrfToken(profile?.csrf_token);
+  return profile;
 }
 
 export async function ping(): Promise<{ user: string; ts: string }> {
@@ -30,4 +34,5 @@ export async function logout(): Promise<void> {
     /* ignore */
   }
   setCredentials(null);
+  clearCsrfToken();
 }

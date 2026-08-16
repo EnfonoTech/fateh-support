@@ -36,13 +36,52 @@ export function getCredentials(): Creds | null {
   return null;
 }
 
+// Token learned at runtime (from login / auth.csrf). Wins over everything
+// else, because Frappe rotates the session — and therefore the token — on
+// login, which leaves the value baked into the page at render time dead.
+let _csrfToken: string | null = null;
+
+export function setCsrfToken(token: string | null | undefined): void {
+  if (token) _csrfToken = token;
+}
+
+/** Drop the learned token — logout rotates the session and invalidates it. */
+export function clearCsrfToken(): void {
+  _csrfToken = null;
+}
+
 function getCsrfToken(): string | null {
-  // Cookie wins — Frappe rotates the value on login/logout, and a stale
-  // server-injected token fails CSRF on every subsequent request.
-  const m = document.cookie.match(/csrf_token=([^;]+)/);
+  if (_csrfToken) return _csrfToken;
+  const m = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
   if (m) return decodeURIComponent(m[1]);
   const g = fatehGlobal();
   return g.csrf_token || null;
+}
+
+/** Ask the server for the current session's token. GET → never CSRF-gated. */
+async function refreshCsrfToken(): Promise<boolean> {
+  try {
+    const res = await fetch(buildUrl("fateh_support.api.auth.csrf"), {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      credentials: isNative() ? "omit" : "include",
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { message?: { csrf_token?: string } };
+    const token = data?.message?.csrf_token;
+    if (!token || token === _csrfToken) return false;
+    _csrfToken = token;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isCsrfFailure(status: number, payload: unknown): boolean {
+  if (status !== 400) return false;
+  const p = (payload || {}) as Record<string, unknown>;
+  if (p.exc_type === "CSRFTokenError") return true;
+  return JSON.stringify(p).includes("CSRFToken");
 }
 
 function buildUrl(method: string): string {
@@ -137,37 +176,54 @@ function parseFrappeError(payload: unknown): string {
 export async function call<T = unknown>(method: string, opts: CallOptions = {}): Promise<T> {
   const httpMethod = opts.method || "POST";
   const url = httpMethod === "GET" ? buildUrl(method) + buildQuery(opts.params) : buildUrl(method);
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    ...authHeaders(),
+
+  const attempt = async (): Promise<{ res: Response; data: unknown }> => {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      ...authHeaders(),
+    };
+    const fetchInit: RequestInit = {
+      method: httpMethod,
+      headers,
+      signal: opts.signal,
+    };
+    if (!isNative()) {
+      fetchInit.credentials = "include";
+    }
+    if (httpMethod === "POST") {
+      headers["Content-Type"] = "application/json";
+      fetchInit.body = JSON.stringify(opts.body ?? opts.params ?? {});
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(url, fetchInit);
+    } catch (err) {
+      // Network error, offline, CORS reject, service-worker abort, etc.
+      const raw = (err as Error)?.message || "";
+      throw new ApiError(raw ? `Network error: ${raw}` : "Network error. Check your connection.", 0);
+    }
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      /* response not JSON — fall through */
+    }
+    return { res, data };
   };
-  const fetchInit: RequestInit = {
-    method: httpMethod,
-    headers,
-    signal: opts.signal,
-  };
-  if (!isNative()) {
-    fetchInit.credentials = "include";
-  }
-  if (httpMethod === "POST") {
-    headers["Content-Type"] = "application/json";
-    fetchInit.body = JSON.stringify(opts.body ?? opts.params ?? {});
+
+  let { res, data } = await attempt();
+
+  // A 400 on an unsafe method is Frappe's CSRF rejection. The token we hold
+  // goes stale the moment the session rotates (login above all), and nothing
+  // pushes the new one to us — so fetch a fresh one and replay once. If the
+  // token came back unchanged this was a genuine 400; don't retry.
+  if (!res.ok && httpMethod === "POST" && (isCsrfFailure(res.status, data) || res.status === 400)) {
+    if (await refreshCsrfToken()) {
+      ({ res, data } = await attempt());
+    }
   }
 
-  let res: Response;
-  try {
-    res = await fetch(url, fetchInit);
-  } catch (err) {
-    // Network error, offline, CORS reject, service-worker abort, etc.
-    const raw = (err as Error)?.message || "";
-    throw new ApiError(raw ? `Network error: ${raw}` : "Network error. Check your connection.", 0);
-  }
-  let data: unknown = null;
-  try {
-    data = await res.json();
-  } catch {
-    /* response not JSON — fall through */
-  }
   if (!res.ok) {
     const msg = parseFrappeError(data) || `HTTP ${res.status}`;
     throw new ApiError(msg, res.status);

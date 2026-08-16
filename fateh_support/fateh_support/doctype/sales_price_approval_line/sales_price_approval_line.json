@@ -23,7 +23,7 @@
   {"fieldname": "uom", "fieldtype": "Link", "label": "UOM", "options": "UOM"},
   {"fieldname": "qty", "fieldtype": "Float", "label": "Qty", "in_list_view": 1, "columns": 1},
   {"fieldname": "proposed_rate", "fieldtype": "Currency", "label": "Proposed Rate", "in_list_view": 1, "columns": 1},
-  {"fieldname": "cost_floor_rate", "fieldtype": "Currency", "label": "Cost Floor Rate", "in_list_view": 1, "columns": 1},
+  {"fieldname": "cost_floor_rate", "fieldtype": "Currency", "label": "Minimum Price", "in_list_view": 1, "columns": 1},
   {"fieldname": "valuation_rate", "fieldtype": "Currency", "label": "Valuation Rate"},
   {"fieldname": "last_purchase_rate", "fieldtype": "Currency", "label": "Last Purchase Rate"},
   {"fieldname": "variance_amount", "fieldtype": "Currency", "label": "Variance Amount"},

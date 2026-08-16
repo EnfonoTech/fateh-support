@@ -15,6 +15,19 @@ except ImportError:  # pragma: no cover
     bcrypt = None
 
 
+def _csrf_token() -> str:
+    """Current session's CSRF token, or "" if it cannot be resolved.
+
+    The SPA needs this after every login: `post_login` rotates the session,
+    so the token baked into the `/fateh` page at render time (a Guest token)
+    is dead and every later POST would fail CSRF with HTTP 400.
+    """
+    try:
+        return frappe.sessions.get_csrf_token()
+    except Exception:
+        return ""
+
+
 def _profile_payload(user: str) -> dict[str, Any]:
     user_doc = frappe.get_doc("User", user)
     roles = set(frappe.get_roles(user))
@@ -22,6 +35,7 @@ def _profile_payload(user: str) -> dict[str, Any]:
 
     return {
         "user": user,
+        "csrf_token": _csrf_token(),
         "full_name": user_doc.full_name,
         "email": user_doc.email,
         "language": user_doc.language or "en",
@@ -47,6 +61,20 @@ def login(usr: str, pwd: str) -> dict[str, Any]:
     login_manager.post_login()
 
     return _profile_payload(frappe.session.user)
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def csrf() -> dict[str, str]:
+    """Hand the caller a fresh CSRF token for the *current* session.
+
+    GET-only on purpose: an unsafe method would itself be CSRF-gated, so the
+    one call that heals a stale token could never get through. Guest-allowed
+    because a logged-out SPA still needs a valid token to POST to `login`.
+    The token is bound to the caller's own session cookie and is useless
+    without it, and `allow_cors` on this site is a localhost allow-list, so
+    no third-party origin can read the response.
+    """
+    return {"csrf_token": _csrf_token(), "user": frappe.session.user}
 
 
 @frappe.whitelist()

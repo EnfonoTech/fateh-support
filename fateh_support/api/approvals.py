@@ -212,6 +212,33 @@ def _apply_decision_to_source(doc) -> None:
 
 
 @frappe.whitelist(methods=["POST"])
+def decide_bulk(names: str | list[str], action: str, note: str = "") -> dict[str, Any]:
+    """Decide several requests in one round-trip (desk list-view bulk action).
+
+    Each request is decided independently: one failure does not abandon the
+    rest. Returns per-name outcomes so the caller can report partial success.
+    """
+    _require_approver()
+
+    if isinstance(names, str):
+        names = json.loads(names)
+    if not isinstance(names, (list, tuple)) or not names:
+        frappe.throw(_("Select at least one request."))
+
+    done: list[str] = []
+    failed: list[dict[str, str]] = []
+    for name in names:
+        try:
+            decide(name=name, action=action, note=note)
+            done.append(name)
+        except Exception as exc:
+            frappe.db.rollback()
+            failed.append({"name": name, "error": str(exc)})
+
+    return {"done": done, "failed": failed}
+
+
+@frappe.whitelist(methods=["POST"])
 def set_justification(name: str, justification: str) -> dict[str, Any]:
     """Requester-side helper to attach a justification after the gate fires."""
     _require_viewer()

@@ -19,6 +19,8 @@ export interface Profile {
   is_approver: boolean;
   is_viewer: boolean;
   branding: BrandConfig;
+  /** Token for the session the server sees right now — rotates on login. */
+  csrf_token?: string;
 }
 
 export interface ItemSummary {

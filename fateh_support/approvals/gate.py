@@ -99,7 +99,7 @@ def check_cost_floor(doc, method: str | None = None) -> None:
     frappe.db.commit()
 
     frappe.throw(
-        _("Price is below cost floor on {0} line(s). Approval request {1} raised.").format(
+        _("Price is below the minimum selling price on {0} line(s). Approval request {1} raised.").format(
             len(violations),
             frappe.get_desk_link("Sales Price Approval Request", request.name),
         )
