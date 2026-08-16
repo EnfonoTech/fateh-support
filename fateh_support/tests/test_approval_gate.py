@@ -58,12 +58,18 @@ class TestApprovalGate(FrappeTestCase):
         frappe.db.set_value = self._orig_set_value  # type: ignore[assignment]
 
     def test_rate_above_floor_passes(self) -> None:
-        doc = _FakeDoc("Quotation", "QUO-TEST-1", [_FakeItem(self.ctx["item"], rate=150.0)])
+        doc = _FakeDoc(
+            "Quotation", self.ctx["quotation"], [_FakeItem(self.ctx["item"], rate=150.0)]
+        )
         check_cost_floor(doc)  # must not raise
         self.assertIsNone(doc.custom_approval_request)
 
     def test_rate_below_floor_blocks_and_creates_request(self) -> None:
-        doc = _FakeDoc("Quotation", "QUO-TEST-2", [_FakeItem(self.ctx["item"], rate=50.0)])
+        # Must be a document that actually exists: `source_name` is a Dynamic
+        # Link, and the gate refuses to build a request for an unsaved doc.
+        doc = _FakeDoc(
+            "Quotation", self.ctx["quotation"], [_FakeItem(self.ctx["item"], rate=50.0)]
+        )
         with self.assertRaises(frappe.ValidationError):
             check_cost_floor(doc)
         self.assertIsNotNone(doc.custom_approval_request)
