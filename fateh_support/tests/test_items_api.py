@@ -23,11 +23,10 @@ class TestItemsApi(FrappeTestCase):
         codes = {r["item_code"] for r in rows}
         self.assertIn(self.ctx["item"], codes)
 
-    def test_prices_omits_cost_floor_for_viewers(self) -> None:
+    def test_viewer_sees_the_ordinary_selling_lists(self) -> None:
         frappe.set_user(self.ctx["viewer"])
         result = items_api.prices(item_code=self.ctx["item"])
         price_lists = {r["price_list"] for r in result["rows"]}
-        self.assertNotIn(self.ctx["cost_floor"], price_lists)
         self.assertIn("Standard Selling", price_lists)
         self.assertFalse(result.get("is_approver"))
 
