@@ -4,6 +4,24 @@ All notable changes to `fateh_support` are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] — 2026-08-16
+
+### Added
+
+- Search by quotation number on **My Requests** too, not just the approvals
+  list; `approvals.mine` now forwards a `search` term. Both lists share one
+  `SearchBox` component.
+
+### Security
+
+- Both servers pulled this repo over an HTTPS remote with a **plaintext GitHub
+  OAuth token** embedded in the URL — live, and scoped `repo`, `workflow`,
+  `gist` on the owning account. Replaced with per-box read-only **deploy keys**
+  (`~/.ssh/fateh_deploy`, generated on the box, pinned via repo-local
+  `core.sshCommand`), matching how RMAX-Custom already worked. The token was
+  scrubbed from both `.git/config` files and from a UAT `bench.log`, and needs
+  revoking on GitHub.
+
 ## [1.1.0] — 2026-08-16
 
 ### Fixed
@@ -61,6 +79,7 @@ All notable changes to `fateh_support` are recorded here. Format follows
 - First release: stock visibility PWA, below-cost approval workflow, Android
   shell.
 
+[1.1.1]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.1
 [1.1.0]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.0
 [1.0.1]: https://github.com/EnfonoTech/fateh-support/releases/tag/rmax-v1.0.1
 [1.0.0]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.0.0
