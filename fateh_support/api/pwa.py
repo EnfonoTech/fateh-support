@@ -14,6 +14,19 @@ from typing import Any
 import frappe
 
 
+def _set_headers(**headers: str) -> None:
+    """Attach response headers, creating the dict if Frappe has not yet.
+
+    `frappe.local.response.headers` is None on a fresh response, so assigning
+    into it raises TypeError and the endpoint 500s. Both PWA routes did that
+    on their last line, which is why the service worker and the manifest have
+    never once been served — and therefore why web push has never worked.
+    """
+    if not frappe.local.response.get("headers"):
+        frappe.local.response["headers"] = {}
+    frappe.local.response["headers"].update(headers)
+
+
 def _branding() -> dict[str, Any]:
     from fateh_support.api import branding as branding_api
 
@@ -48,7 +61,7 @@ def manifest() -> None:
     frappe.local.response["type"] = "binary"
     frappe.local.response["filename"] = "manifest.webmanifest"
     frappe.local.response["filecontent"] = json.dumps(payload).encode("utf-8")
-    frappe.local.response.headers["Content-Type"] = "application/manifest+json"
+    _set_headers(**{"Content-Type": "application/manifest+json"})
 
 
 @frappe.whitelist(allow_guest=True)
@@ -99,5 +112,12 @@ def sw() -> None:
     frappe.local.response["type"] = "binary"
     frappe.local.response["filename"] = "fateh-sw.js"
     frappe.local.response["filecontent"] = body.encode("utf-8")
-    frappe.local.response.headers["Content-Type"] = "application/javascript; charset=utf-8"
-    frappe.local.response.headers["Cache-Control"] = "no-store"
+    _set_headers(
+        **{
+            "Content-Type": "application/javascript; charset=utf-8",
+            "Cache-Control": "no-store",
+            # The script sits at the site root, so it may claim any scope; the
+            # registration asks for /fateh/.
+            "Service-Worker-Allowed": "/",
+        }
+    )

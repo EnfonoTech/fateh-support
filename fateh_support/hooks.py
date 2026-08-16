@@ -25,16 +25,17 @@ website_route_rules = [
     },
 ]
 
+_APPROVAL_GATE = {
+    "before_submit": "fateh_support.approvals.gate.check_cost_floor",
+    # Raises the request for a document the gate had to save as a draft,
+    # because before_submit runs before the row exists.
+    "after_insert": "fateh_support.approvals.gate.raise_request_for_saved_draft",
+}
+
 doc_events = {
-    "Quotation": {
-        "before_submit": "fateh_support.approvals.gate.check_cost_floor",
-    },
-    "Sales Order": {
-        "before_submit": "fateh_support.approvals.gate.check_cost_floor",
-    },
-    "Sales Invoice": {
-        "before_submit": "fateh_support.approvals.gate.check_cost_floor",
-    },
+    "Quotation": _APPROVAL_GATE,
+    "Sales Order": _APPROVAL_GATE,
+    "Sales Invoice": _APPROVAL_GATE,
 }
 
 after_migrate = [

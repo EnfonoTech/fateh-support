@@ -96,18 +96,20 @@ def check_cost_floor(doc, method: str | None = None) -> None:
         return
 
     if not frappe.db.exists(doc.doctype, doc.name):
-        # Submitting a document that was never saved: Frappe's insert() runs
-        # before_submit BEFORE db_insert, so the source row does not exist yet.
-        # `Sales Price Approval Request.source_name` is a Dynamic Link, so
-        # building the request here dies on link validation with a bewildering
-        # "Could not find Source Name: <doc>". Ask for a draft instead — an
-        # approval request has to hang off a document the approver can open.
-        frappe.throw(
-            _("Price is below the minimum selling price on {0} line(s). "
-              "Save this as a draft first, then submit it — the approval "
-              "request has to be attached to a saved document.").format(len(violations)),
-            title=_("Save Before Submitting"),
-        )
+        # The document has never been saved. Frappe's insert() runs
+        # before_submit BEFORE db_insert, so there is no row to hang an
+        # approval request off yet, and throwing here would throw the
+        # operator's work away with it — RMAX submits straight from a blank
+        # form, there is no draft step to fall back on.
+        #
+        # Land it as a draft instead: run_post_save_methods dispatches on
+        # `_action`, so downgrading both fields makes db_insert write
+        # docstatus 0 and run on_update rather than on_submit. The request is
+        # then raised from after_insert, once the row is really on disk.
+        doc.docstatus = 0
+        doc._action = "save"
+        doc.flags.fateh_pending_violations = violations
+        return
 
     if existing_status == "Pending":
         frappe.throw(
@@ -210,3 +212,42 @@ def _build_request(doc, violations: list[dict[str, Any]]):
         req.append("lines", v)
     req.insert(ignore_permissions=True)
     return req
+
+
+def raise_request_for_saved_draft(doc, method: str | None = None) -> None:
+    """`after_insert` hook — finish the work `check_cost_floor` deferred.
+
+    Only fires for a document the gate just downgraded to a draft. The row
+    exists by now, so the request's Dynamic Link resolves and the approver
+    gets something they can actually open.
+    """
+    violations = (doc.flags or {}).get("fateh_pending_violations")
+    if not violations:
+        return
+    doc.flags.fateh_pending_violations = None
+
+    request = _build_request(doc, violations)
+    frappe.db.set_value(
+        doc.doctype,
+        doc.name,
+        {
+            "custom_approval_status": "Pending Approval",
+            "custom_approval_request": request.name,
+            "custom_approval_decision_note": None,
+            "custom_approval_approver": None,
+        },
+        update_modified=False,
+    )
+    doc.custom_approval_status = "Pending Approval"
+    doc.custom_approval_request = request.name
+
+    frappe.msgprint(
+        _("Price is below the minimum selling price on {0} line(s). "
+          "Saved as a draft and sent for approval: {1}. "
+          "Submit it once the request is approved.").format(
+            len(violations),
+            frappe.get_desk_link("Sales Price Approval Request", request.name),
+        ),
+        title=_("Sent for Approval"),
+        indicator="orange",
+    )
