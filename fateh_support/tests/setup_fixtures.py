@@ -133,6 +133,57 @@ def ensure_user(email: str, roles: list[str]) -> str:
     return email
 
 
+def ensure_customer(name: str = "Fateh Test Customer") -> str:
+    if not frappe.db.exists("Customer", name):
+        frappe.get_doc(
+            {
+                "doctype": "Customer",
+                "customer_name": name,
+                "customer_type": "Company",
+            }
+        ).insert(ignore_permissions=True)
+    return name
+
+
+def ensure_quotation(company: str, item_code: str, rate: float = 150.0) -> str:
+    """A draft Quotation to hang approval requests off.
+
+    `Sales Price Approval Request.source_name` is a Dynamic Link, so it has
+    to resolve to a real record — a placeholder name fails link validation on
+    every insert and save. Kept in draft: the gate only fires on submit.
+    """
+    customer = ensure_customer()
+    existing = frappe.db.get_value(
+        "Quotation", {"party_name": customer, "company": company, "docstatus": 0}, "name"
+    )
+    if existing:
+        return existing
+
+    quotation = frappe.get_doc(
+        {
+            "doctype": "Quotation",
+            "quotation_to": "Customer",
+            "party_name": customer,
+            "company": company,
+            "currency": ensure_currency(),
+            "conversion_rate": 1,
+            "selling_price_list": "Standard Selling",
+            "transaction_date": frappe.utils.nowdate(),
+            "items": [
+                {
+                    "item_code": item_code,
+                    "qty": 1,
+                    "rate": rate,
+                    "uom": ensure_uom(),
+                    "conversion_factor": 1,
+                }
+            ],
+        }
+    )
+    quotation.insert(ignore_permissions=True)
+    return quotation.name
+
+
 def configure_cost_floor(price_list: str) -> None:
     settings = frappe.get_single("Fateh Support Settings")
     settings.cost_floor_price_list = price_list
@@ -162,4 +213,6 @@ def reset_test_sandbox() -> dict[str, Any]:
         "viewer": viewer,
         "approver": approver,
         "requester": requester,
+        "customer": ensure_customer(),
+        "quotation": ensure_quotation(company, item),
     }

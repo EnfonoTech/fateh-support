@@ -15,8 +15,8 @@ def _make_request(ctx) -> str:
     req = frappe.new_doc("Sales Price Approval Request")
     req.status = "Pending"
     req.source_doctype = "Quotation"
-    req.source_name = "QUO-TEST-X"
-    req.customer = None
+    req.source_name = ctx["quotation"]
+    req.customer = ctx["customer"]
     req.currency = "USD"
     req.requester = ctx["requester"]
     req.append(
@@ -28,9 +28,7 @@ def _make_request(ctx) -> str:
             "cost_floor_rate": 100,
         },
     )
-    # `source_name` is a Dynamic Link and QUO-TEST-X is a stand-in, not a real
-    # Quotation — the decide path only ever writes to it by name.
-    req.insert(ignore_permissions=True, ignore_links=True)
+    req.insert(ignore_permissions=True)
     return req.name
 
 
