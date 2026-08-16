@@ -97,6 +97,26 @@ class TestApprovalsApi(FrappeTestCase):
         self.assertEqual(result["done"], [self.name])
         self.assertEqual([f["name"] for f in result["failed"]], [already])
 
+    def test_search_matches_source_name(self) -> None:
+        """Approvers search by the quotation number read out to them."""
+        frappe.set_user(self.ctx["approver"])
+        quotation = self.ctx["quotation"]
+
+        hit = approvals_api.list_requests(status="Pending", search=quotation)
+        self.assertIn(self.name, [r["name"] for r in hit["rows"]])
+
+        miss = approvals_api.list_requests(status="Pending", search="QUO-NOPE-9999")
+        self.assertEqual(miss["rows"], [])
+        self.assertEqual(miss["total"], 0)
+
+    def test_mine_passes_search_through(self) -> None:
+        frappe.set_user(self.ctx["requester"])
+        hit = approvals_api.mine(search=self.ctx["quotation"])
+        self.assertIn(self.name, [r["name"] for r in hit["rows"]])
+
+        miss = approvals_api.mine(search="QUO-NOPE-9999")
+        self.assertEqual(miss["rows"], [])
+
     def test_bulk_decide_requires_approver(self) -> None:
         frappe.set_user(self.ctx["requester"])
         with self.assertRaises(frappe.PermissionError):

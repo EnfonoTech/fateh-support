@@ -44,10 +44,10 @@ export function setJustification(name: string, justification: string): Promise<{
   });
 }
 
-export function myRequests(limit = 20, offset = 0): Promise<ApprovalListResponse> {
+export function myRequests(limit = 20, offset = 0, search = ""): Promise<ApprovalListResponse> {
   return call("fateh_support.api.approvals.mine", {
     method: "GET",
-    params: { limit, offset },
+    params: { limit, offset, search },
   });
 }
 

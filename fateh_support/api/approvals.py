@@ -257,8 +257,8 @@ def set_justification(name: str, justification: str) -> dict[str, Any]:
 
 
 @frappe.whitelist()
-def mine(limit: int = 20, offset: int = 0) -> dict[str, Any]:
-    return list_requests(status="", mine=1, limit=limit, offset=offset)
+def mine(limit: int = 20, offset: int = 0, search: str = "") -> dict[str, Any]:
+    return list_requests(status="", mine=1, limit=limit, offset=offset, search=search)
 
 
 @frappe.whitelist()
