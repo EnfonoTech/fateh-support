@@ -28,11 +28,14 @@ class _FakeDoc:
         name: str,
         items: list[_FakeItem],
         selling_price_list: str | None = None,
+        customer: str | None = None,
     ):
         self.doctype = doctype
         self.name = name
         self.items = items
-        self.customer = "__Test Customer"
+        # Must be a real Customer when a request gets built — the request's
+        # `customer` is a Link and link validation runs on insert.
+        self.customer = customer
         self.currency = "USD"
         self.selling_price_list = selling_price_list
         self.custom_approval_status = None
@@ -68,7 +71,10 @@ class TestApprovalGate(FrappeTestCase):
         # Must be a document that actually exists: `source_name` is a Dynamic
         # Link, and the gate refuses to build a request for an unsaved doc.
         doc = _FakeDoc(
-            "Quotation", self.ctx["quotation"], [_FakeItem(self.ctx["item"], rate=50.0)]
+            "Quotation",
+            self.ctx["quotation"],
+            [_FakeItem(self.ctx["item"], rate=50.0)],
+            customer=self.ctx["customer"],
         )
         with self.assertRaises(frappe.ValidationError):
             check_cost_floor(doc)
