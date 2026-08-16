@@ -149,79 +149,13 @@ class TestApprovalGate(FrappeTestCase):
             [_FakeItem(self.ctx["item"], rate=1.0)],
             selling_price_list="Standard Selling",
         )
-        with self.assertRaises(frappe.ValidationError):
-            check_cost_floor(doc)
-
-    def test_new_document_submitted_directly_lands_as_a_draft(self) -> None:
-        """The real RMAX flow: save+submit in one call, from a blank form.
-
-        There is no draft step in production — `frm.save("Submit")` is called
-        on a brand-new document. The gate must not discard that work: it lands
-        the document as a draft and raises the request against it.
-        """
-        before = frappe.db.count("Sales Price Approval Request")
-
-        quotation = frappe.get_doc({
-            "doctype": "Quotation",
-            "quotation_to": "Customer",
-            "party_name": self.ctx["customer"],
-            "company": self.ctx["company"],
-            "currency": "USD",
-            "conversion_rate": 1,
-            "selling_price_list": "Standard Selling",
-            "transaction_date": frappe.utils.nowdate(),
-            "items": [{
-                "item_code": self.ctx["item"],
-                "qty": 1,
-                "rate": 50.0,  # below the 100.0 floor
-                "uom": "Nos",
-                "conversion_factor": 1,
-            }],
-        })
-        quotation.docstatus = 1          # exactly what save("Submit") does
-        quotation.insert(ignore_permissions=True)
-
-        self.assertEqual(quotation.docstatus, 0, "must be held back as a draft")
-        self.assertTrue(frappe.db.exists("Quotation", quotation.name))
-        self.assertEqual(
-            frappe.db.get_value("Quotation", quotation.name, "docstatus"), 0
-        )
-        self.assertEqual(frappe.db.count("Sales Price Approval Request"), before + 1)
-
-        req_name = frappe.db.get_value(
-            "Quotation", quotation.name, "custom_approval_request"
-        )
-        self.assertTrue(req_name)
-        req = frappe.get_doc("Sales Price Approval Request", req_name)
-        self.assertEqual(req.status, "Pending")
-        self.assertEqual(req.source_name, quotation.name)
-        self.assertEqual(
-            frappe.db.get_value("Quotation", quotation.name, "custom_approval_status"),
-            "Pending Approval",
-        )
-
-    def test_new_document_above_floor_still_submits(self) -> None:
-        """Regression guard: the gate must not hold back a compliant document."""
-        quotation = frappe.get_doc({
-            "doctype": "Quotation",
-            "quotation_to": "Customer",
-            "party_name": self.ctx["customer"],
-            "company": self.ctx["company"],
-            "currency": "USD",
-            "conversion_rate": 1,
-            "selling_price_list": "Standard Selling",
-            "transaction_date": frappe.utils.nowdate(),
-            "items": [{
-                "item_code": self.ctx["item"],
-                "qty": 1,
-                "rate": 150.0,  # above the floor
-                "uom": "Nos",
-                "conversion_factor": 1,
-            }],
-        })
-        quotation.docstatus = 1
-        quotation.insert(ignore_permissions=True)
-        self.assertEqual(quotation.docstatus, 1, "compliant document must submit")
+        doc.docstatus = 1
+        doc._action = "submit"
+        check_cost_floor(doc)
+        # Not exempt, so the gate acts: this document has no DB row, so it is
+        # deferred to a draft rather than allowed through.
+        self.assertEqual(doc.docstatus, 0)
+        self.assertTrue(doc.flags.get("fateh_pending_violations"))
 
     def test_unsaved_document_is_deferred_not_discarded(self) -> None:
         """Regression: submitting a never-saved doc used to die on link validation.
@@ -250,3 +184,73 @@ class TestApprovalGate(FrappeTestCase):
         self.assertTrue(doc.flags.get("fateh_pending_violations"))
         self.assertIsNone(doc.custom_approval_request)
         self.assertEqual(frappe.db.count("Sales Price Approval Request"), before)
+
+
+class TestApprovalGateEndToEnd(FrappeTestCase):
+    """Real documents, real inserts — no stubbed `frappe.db.set_value`.
+
+    TestApprovalGate stubs set_value so its stand-in documents can run, which
+    silently hides whether the gate's write-back actually lands. These go
+    through Frappe's genuine insert path instead.
+    """
+
+    def setUp(self) -> None:
+        self.ctx = reset_test_sandbox()
+
+    def _new_quotation(self, rate: float):
+        return frappe.get_doc({
+            "doctype": "Quotation",
+            "quotation_to": "Customer",
+            "party_name": self.ctx["customer"],
+            "company": self.ctx["company"],
+            "currency": "USD",
+            "conversion_rate": 1,
+            "selling_price_list": "Standard Selling",
+            "transaction_date": frappe.utils.nowdate(),
+            "items": [{
+                "item_code": self.ctx["item"],
+                "qty": 1,
+                "rate": rate,
+                "uom": "Nos",
+                "conversion_factor": 1,
+            }],
+        })
+    def test_new_document_submitted_directly_lands_as_a_draft(self) -> None:
+        """The real RMAX flow: save+submit in one call, from a blank form.
+
+        There is no draft step in production — `frm.save("Submit")` is called
+        on a brand-new document. The gate must not discard that work: it lands
+        the document as a draft and raises the request against it.
+        """
+        before = frappe.db.count("Sales Price Approval Request")
+
+        quotation = self._new_quotation(50.0)  # below the 100.0 floor
+        quotation.docstatus = 1          # exactly what save("Submit") does
+        quotation.insert(ignore_permissions=True)
+
+        self.assertEqual(quotation.docstatus, 0, "must be held back as a draft")
+        self.assertTrue(frappe.db.exists("Quotation", quotation.name))
+        self.assertEqual(
+            frappe.db.get_value("Quotation", quotation.name, "docstatus"), 0
+        )
+        self.assertEqual(frappe.db.count("Sales Price Approval Request"), before + 1)
+
+        req_name = frappe.db.get_value(
+            "Quotation", quotation.name, "custom_approval_request"
+        )
+        self.assertTrue(req_name)
+        req = frappe.get_doc("Sales Price Approval Request", req_name)
+        self.assertEqual(req.status, "Pending")
+        self.assertEqual(req.source_name, quotation.name)
+        self.assertEqual(
+            frappe.db.get_value("Quotation", quotation.name, "custom_approval_status"),
+            "Pending Approval",
+        )
+
+    def test_new_document_above_floor_still_submits(self) -> None:
+        """Regression guard: the gate must not hold back a compliant document."""
+        quotation = self._new_quotation(150.0)  # above the floor
+        quotation.docstatus = 1
+        quotation.insert(ignore_permissions=True)
+        self.assertEqual(quotation.docstatus, 1, "compliant document must submit")
+
