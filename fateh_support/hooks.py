@@ -18,11 +18,10 @@ doctype_js = {
 
 website_route_rules = [
     {"from_route": "/fateh/<path:app_path>", "to_route": "fateh"},
-    {"from_route": "/fateh-sw.js", "to_route": "api/method/fateh_support.api.pwa.sw"},
-    {
-        "from_route": "/fateh-manifest.webmanifest",
-        "to_route": "api/method/fateh_support.api.pwa.manifest",
-    },
+    # No rules for the service worker or the manifest: `to_route` cannot
+    # dispatch to `api/method/...`, so both 404'd. They are plain static files
+    # in `www/` now, which also gets them the right MIME type — a worker
+    # served as octet-stream is refused by the browser outright.
 ]
 
 _APPROVAL_GATE = {
