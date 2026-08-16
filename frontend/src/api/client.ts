@@ -1,4 +1,4 @@
-import { apiBase, fatehGlobal, isNative } from "@/utils/platform";
+import { apiBase, fatehGlobal } from "@/utils/platform";
 
 const CRED_KEY = "fateh.token";
 
@@ -61,10 +61,13 @@ function getCsrfToken(): string | null {
 /** Ask the server for the current session's token. GET → never CSRF-gated. */
 async function refreshCsrfToken(): Promise<boolean> {
   try {
+    // Must carry the session cookie. Omitting it made the server answer as
+    // Guest and hand back a Guest token, so the replay failed exactly like
+    // the original request — two 400s a second apart, and no way out of it.
     const res = await fetch(buildUrl("fateh_support.api.auth.csrf"), {
       method: "GET",
       headers: { Accept: "application/json" },
-      credentials: isNative() ? "omit" : "include",
+      credentials: "include",
     });
     if (!res.ok) return false;
     const data = (await res.json()) as { message?: { csrf_token?: string } };
@@ -89,13 +92,28 @@ function buildUrl(method: string): string {
   return `${base}/api/method/${method}`;
 }
 
+/**
+ * Send whatever credentials we actually hold — never branch on "native".
+ *
+ * The Android shell is a remote-URL WebView, so it authenticates with the
+ * same session cookie as a browser tab and needs the same CSRF header. The
+ * old code assumed native meant API-key auth, returned only an Authorization
+ * header, and fell back to `{}` when no key was stored — so every POST from
+ * the APK went out with no CSRF token and Frappe answered 400.
+ *
+ * Sending both is safe: Frappe ignores the CSRF header on token-authenticated
+ * requests, and ignores the Authorization header when it isn't set.
+ */
 function authHeaders(): Record<string, string> {
-  if (isNative()) {
-    const c = getCredentials();
-    return c ? { Authorization: `token ${c.apiKey}:${c.apiSecret}` } : {};
-  }
+  const headers: Record<string, string> = {};
+
+  const creds = getCredentials();
+  if (creds) headers.Authorization = `token ${creds.apiKey}:${creds.apiSecret}`;
+
   const csrf = getCsrfToken();
-  return csrf ? { "X-Frappe-CSRF-Token": csrf } : {};
+  if (csrf) headers["X-Frappe-CSRF-Token"] = csrf;
+
+  return headers;
 }
 
 export interface CallOptions {
@@ -187,9 +205,9 @@ export async function call<T = unknown>(method: string, opts: CallOptions = {}):
       headers,
       signal: opts.signal,
     };
-    if (!isNative()) {
-      fetchInit.credentials = "include";
-    }
+    // The APK is a remote-URL WebView on the same origin as the API, so it
+    // relies on the session cookie exactly as a browser tab does.
+    fetchInit.credentials = "include";
     if (httpMethod === "POST") {
       headers["Content-Type"] = "application/json";
       fetchInit.body = JSON.stringify(opts.body ?? opts.params ?? {});

@@ -4,6 +4,29 @@ All notable changes to `fateh_support` are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] — 2026-08-16
+
+### Fixed
+
+- **Approve still failed from the Android app with "Request failed"**, while
+  the same action worked from a desktop browser and from desk. Two bugs in
+  the client's native branch, compounding:
+
+  1. `authHeaders()` assumed "native" meant API-key auth, so it returned only
+     an `Authorization` header — and `{}` when no key was stored. The APK is
+     a remote-URL WebView that signs in with a session cookie like any
+     browser tab, so every POST from it went out with **no CSRF header at
+     all** and Frappe answered 400.
+  2. The v1.1.0 refresh-and-replay fetched the new token with
+     `credentials: "omit"` on native, so the server answered as Guest and
+     returned a **Guest** token. The replay then failed identically — two
+     400s in the same second, with no way out.
+
+  The client no longer branches on "native" for credentials: it sends the
+  CSRF header whenever it holds a token, the `Authorization` header whenever
+  API keys are stored, and always includes cookies. Frappe ignores whichever
+  is not relevant.
+
 ## [1.2.1] — 2026-08-16
 
 ### Fixed
@@ -128,6 +151,7 @@ All notable changes to `fateh_support` are recorded here. Format follows
 - First release: stock visibility PWA, below-cost approval workflow, Android
   shell.
 
+[1.2.2]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.2.2
 [1.2.1]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.2.1
 [1.2.0]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.2.0
 [1.1.2]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.2
