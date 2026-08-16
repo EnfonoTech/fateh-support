@@ -34,7 +34,11 @@ def subscribe(subscription: str | dict[str, Any], type: str = "web") -> dict[str
 
     keys = subscription.get("keys") or {}
     user = frappe.session.user
-    user_agent = frappe.get_request_header("User-Agent") or ""
+    # `frappe.get_request_header` dereferences frappe.request, which raises
+    # "object is not bound" when there is no HTTP request — a background job,
+    # a bench console call, or a test. The user agent is a nicety; never let
+    # it take the subscription down with it.
+    user_agent = (frappe.get_request_header("User-Agent") or "") if frappe.request else ""
 
     existing = frappe.db.get_value(
         "Fateh Push Subscription",
