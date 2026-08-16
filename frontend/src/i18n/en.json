@@ -63,6 +63,8 @@
     "filter_rejected": "Rejected",
     "filter_mine": "Mine",
     "empty_state": "No requests match this filter.",
+    "search_placeholder": "Search by quotation / order no.",
+    "empty_search": "No requests found for \u201c{q}\u201d.",
     "view": "View details",
     "requester": "Requester",
     "customer": "Customer",
@@ -105,6 +107,7 @@
   "common": {
     "search": "Search",
     "cancel": "Cancel",
+    "clear": "Clear",
     "save": "Save",
     "confirm": "Confirm",
     "close": "Close",

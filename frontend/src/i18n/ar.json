@@ -63,6 +63,8 @@
     "filter_rejected": "مرفوضة",
     "filter_mine": "طلباتي",
     "empty_state": "لا توجد طلبات مطابقة.",
+    "search_placeholder": "ابحث برقم عرض السعر / الطلب",
+    "empty_search": "لا توجد طلبات لـ \u201c{q}\u201d.",
     "view": "عرض التفاصيل",
     "requester": "مقدم الطلب",
     "customer": "العميل",
@@ -105,6 +107,7 @@
   "common": {
     "search": "بحث",
     "cancel": "إلغاء",
+    "clear": "مسح",
     "save": "حفظ",
     "confirm": "تأكيد",
     "close": "إغلاق",
