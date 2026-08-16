@@ -4,6 +4,21 @@ All notable changes to `fateh_support` are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-08-16
+
+### Added
+
+- **Price lists can be exempted from the approval gate.** New
+  `Fateh Support Settings.exempt_price_lists` — a sales document priced off any
+  list in it skips the gate outright, whatever the rate. Inter-company
+  transfers move stock between our own branches at cost, so measuring them
+  against a customer-facing minimum flagged every one of them; a Sales Invoice
+  on `Inter Company Price` raised an approval request for 5 of 5 lines.
+  Exempting also clears a flag raised before the list was exempted, so
+  documents already stuck behind a request are released on next submit.
+
+  Matching is case-insensitive. Configured on RMAX with `Inter Company Price`.
+
 ## [1.1.2] — 2026-08-16
 
 ### Fixed
@@ -98,6 +113,7 @@ All notable changes to `fateh_support` are recorded here. Format follows
 - First release: stock visibility PWA, below-cost approval workflow, Android
   shell.
 
+[1.2.0]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.2.0
 [1.1.2]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.2
 [1.1.1]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.1
 [1.1.0]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.0

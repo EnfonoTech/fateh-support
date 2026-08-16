@@ -31,12 +31,51 @@ def _get_applicable_price_list(doc, settings) -> str:
     return (settings.get("cost_floor_price_list") or "").strip()
 
 
+def _is_exempt_price_list(doc, settings) -> bool:
+    """True when the document prices off a list that bypasses the gate.
+
+    Some price lists are not customer pricing at all — inter-company transfers
+    move stock between our own branches at cost, so comparing them against a
+    customer-facing minimum blocks every one of them for no reason.
+    """
+    selling_list = (getattr(doc, "selling_price_list", None) or "").strip()
+    if not selling_list:
+        return False
+    exempt = {
+        (row.price_list or "").strip().lower()
+        for row in (settings.get("exempt_price_lists") or [])
+        if row.price_list
+    }
+    return selling_list.lower() in exempt
+
+
+def _scrub_stale_flag(doc) -> None:
+    """Clear a leftover Pending/Rejected flag so the document submits cleanly."""
+    if getattr(doc, "custom_approval_status", None) not in ("Pending Approval", "Rejected"):
+        return
+    doc.custom_approval_status = ""
+    doc.custom_approval_request = None
+    frappe.db.set_value(
+        doc.doctype,
+        doc.name,
+        {"custom_approval_status": "", "custom_approval_request": None},
+        update_modified=False,
+    )
+
+
 def check_cost_floor(doc, method: str | None = None) -> None:
     """`before_submit` hook. May `frappe.throw()` to block submit."""
     if getattr(doc, "custom_approval_status", None) == "Approved":
         return
 
     settings = frappe.get_cached_doc("Fateh Support Settings")
+
+    if _is_exempt_price_list(doc, settings):
+        # Also clear any flag raised before the list was exempted, or the doc
+        # would stay stuck behind a request nobody needs to decide.
+        _scrub_stale_flag(doc)
+        return
+
     cost_floor_list = _get_applicable_price_list(doc, settings)
     if not cost_floor_list:
         return
@@ -51,18 +90,9 @@ def check_cost_floor(doc, method: str | None = None) -> None:
     )
 
     if not violations:
-        # Rates now above floor. If the source doc still carries a stale
-        # Pending Approval / Rejected flag, scrub it so submit can proceed
-        # cleanly and the desk view no longer shows a red banner.
-        if getattr(doc, "custom_approval_status", None) in ("Pending Approval", "Rejected"):
-            doc.custom_approval_status = ""
-            doc.custom_approval_request = None
-            frappe.db.set_value(
-                doc.doctype,
-                doc.name,
-                {"custom_approval_status": "", "custom_approval_request": None},
-                update_modified=False,
-            )
+        # Rates now above floor. Drop any stale flag so submit proceeds cleanly
+        # and the desk view no longer shows a red banner.
+        _scrub_stale_flag(doc)
         return
 
     if existing_status == "Pending":

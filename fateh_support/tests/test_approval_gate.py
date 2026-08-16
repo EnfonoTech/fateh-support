@@ -6,7 +6,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from fateh_support.approvals.gate import check_cost_floor
-from fateh_support.tests.setup_fixtures import reset_test_sandbox
+from fateh_support.tests.setup_fixtures import configure_cost_floor, reset_test_sandbox
 
 
 class _FakeItem:
@@ -22,12 +22,19 @@ class _FakeItem:
 class _FakeDoc:
     """Enough of a Quotation/SO surface for the gate to run without full DB writes."""
 
-    def __init__(self, doctype: str, name: str, items: list[_FakeItem]):
+    def __init__(
+        self,
+        doctype: str,
+        name: str,
+        items: list[_FakeItem],
+        selling_price_list: str | None = None,
+    ):
         self.doctype = doctype
         self.name = name
         self.items = items
         self.customer = "__Test Customer"
         self.currency = "USD"
+        self.selling_price_list = selling_price_list
         self.custom_approval_status = None
         self.custom_approval_request = None
 
@@ -78,3 +85,54 @@ class TestApprovalGate(FrappeTestCase):
         settings.save(ignore_permissions=True)
         doc = _FakeDoc("Quotation", "QUO-TEST-4", [_FakeItem(self.ctx["item"], rate=10.0)])
         check_cost_floor(doc)  # must not raise
+
+    def test_exempt_price_list_skips_the_gate(self) -> None:
+        """Inter-company transfers are not customer pricing — never gate them."""
+        configure_cost_floor(self.ctx["cost_floor"], exempt=["Fateh Inter Company"])
+        doc = _FakeDoc(
+            "Sales Invoice",
+            "SINV-TEST-EXEMPT",
+            [_FakeItem(self.ctx["item"], rate=1.0)],  # far below the floor
+            selling_price_list="Fateh Inter Company",
+        )
+        check_cost_floor(doc)  # must not raise
+        self.assertIsNone(doc.custom_approval_request)
+
+    def test_exempt_match_ignores_case(self) -> None:
+        configure_cost_floor(self.ctx["cost_floor"], exempt=["Fateh Inter Company"])
+        doc = _FakeDoc(
+            "Sales Invoice",
+            "SINV-TEST-EXEMPT-CASE",
+            [_FakeItem(self.ctx["item"], rate=1.0)],
+            selling_price_list="fateh inter company",
+        )
+        check_cost_floor(doc)
+        self.assertIsNone(doc.custom_approval_request)
+
+    def test_exempting_clears_a_flag_raised_before(self) -> None:
+        """A doc already stuck behind a request must not stay stuck."""
+        configure_cost_floor(self.ctx["cost_floor"], exempt=["Fateh Inter Company"])
+        doc = _FakeDoc(
+            "Sales Invoice",
+            "SINV-TEST-EXEMPT-STALE",
+            [_FakeItem(self.ctx["item"], rate=1.0)],
+            selling_price_list="Fateh Inter Company",
+        )
+        doc.custom_approval_status = "Pending Approval"
+        doc.custom_approval_request = "SPAR-TEST-OLD"
+
+        check_cost_floor(doc)
+
+        self.assertEqual(doc.custom_approval_status, "")
+        self.assertIsNone(doc.custom_approval_request)
+
+    def test_non_exempt_price_list_still_blocks(self) -> None:
+        configure_cost_floor(self.ctx["cost_floor"], exempt=["Fateh Inter Company"])
+        doc = _FakeDoc(
+            "Sales Invoice",
+            "SINV-TEST-GATED",
+            [_FakeItem(self.ctx["item"], rate=1.0)],
+            selling_price_list="Standard Selling",
+        )
+        with self.assertRaises(frappe.ValidationError):
+            check_cost_floor(doc)

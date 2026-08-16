@@ -184,10 +184,13 @@ def ensure_quotation(company: str, item_code: str, rate: float = 150.0) -> str:
     return quotation.name
 
 
-def configure_cost_floor(price_list: str) -> None:
+def configure_cost_floor(price_list: str, exempt: list[str] | None = None) -> None:
     settings = frappe.get_single("Fateh Support Settings")
     settings.cost_floor_price_list = price_list
     settings.enable_push = 0  # keep tests offline
+    settings.set("exempt_price_lists", [])
+    for name in exempt or []:
+        settings.append("exempt_price_lists", {"price_list": ensure_price_list(name)})
     settings.flags.ignore_permissions = True
     settings.save(ignore_permissions=True)
 
