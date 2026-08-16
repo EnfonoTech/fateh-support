@@ -36,17 +36,26 @@ def ensure_company(name: str = "Fateh Test Co") -> str:
     return name
 
 
-def ensure_warehouse(name: str, company: str) -> str:
-    if frappe.db.exists("Warehouse", name):
-        return name
+def ensure_warehouse(warehouse_name: str, company: str) -> str:
+    """Return the full warehouse name, creating it if absent.
+
+    Frappe autonames a Warehouse `<warehouse_name> - <company abbr>`, so the
+    existence check has to use the abbr — slicing the company name instead
+    looks for a document that can never exist, and the insert then collides
+    with the warehouse left behind by the previous run.
+    """
+    abbr = frappe.get_cached_value("Company", company, "abbr")
+    full_name = f"{warehouse_name} - {abbr}"
+    if frappe.db.exists("Warehouse", full_name):
+        return full_name
     frappe.get_doc(
         {
             "doctype": "Warehouse",
-            "warehouse_name": name.replace(f" - {company[:3]}", ""),
+            "warehouse_name": warehouse_name,
             "company": company,
         }
     ).insert(ignore_permissions=True)
-    return name
+    return full_name
 
 
 def ensure_item(item_code: str, valuation_rate: float = 100.0) -> str:
@@ -135,7 +144,7 @@ def configure_cost_floor(price_list: str) -> None:
 def reset_test_sandbox() -> dict[str, Any]:
     """Build a self-consistent sandbox for approval-flow tests."""
     company = ensure_company()
-    warehouse = ensure_warehouse(f"Main - {company[:3]}", company)
+    warehouse = ensure_warehouse("Main", company)
     ensure_price_list("Standard Selling")
     cost_floor = ensure_price_list("Fateh Cost Floor")
     item = ensure_item("FATEH-TEST-001", valuation_rate=80.0)
