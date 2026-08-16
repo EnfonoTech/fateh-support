@@ -28,7 +28,9 @@ def _make_request(ctx) -> str:
             "cost_floor_rate": 100,
         },
     )
-    req.insert(ignore_permissions=True)
+    # `source_name` is a Dynamic Link and QUO-TEST-X is a stand-in, not a real
+    # Quotation — the decide path only ever writes to it by name.
+    req.insert(ignore_permissions=True, ignore_links=True)
     return req.name
 
 
