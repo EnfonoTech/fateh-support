@@ -136,3 +136,28 @@ class TestApprovalGate(FrappeTestCase):
         )
         with self.assertRaises(frappe.ValidationError):
             check_cost_floor(doc)
+
+    def test_unsaved_document_asks_for_a_draft(self) -> None:
+        """Regression: submitting a never-saved doc used to die on link validation.
+
+        Frappe's insert() runs before_submit BEFORE db_insert, so the source
+        row does not exist when the gate fires. Building the request then
+        failed on the Dynamic Link with "Could not find Source Name: <doc>".
+        The gate must ask for a draft instead, and must NOT leave an approval
+        request pointing at a document that will never exist.
+        """
+        before = frappe.db.count("Sales Price Approval Request")
+
+        doc = _FakeDoc(
+            "Sales Invoice",
+            "SINV-DOES-NOT-EXIST-YET",
+            [_FakeItem(self.ctx["item"], rate=50.0)],
+        )
+        with self.assertRaises(frappe.ValidationError) as caught:
+            check_cost_floor(doc)
+
+        message = str(caught.exception)
+        self.assertIn("draft", message.lower())
+        self.assertNotIn("Could not find", message)
+        self.assertIsNone(doc.custom_approval_request)
+        self.assertEqual(frappe.db.count("Sales Price Approval Request"), before)

@@ -95,6 +95,20 @@ def check_cost_floor(doc, method: str | None = None) -> None:
         _scrub_stale_flag(doc)
         return
 
+    if not frappe.db.exists(doc.doctype, doc.name):
+        # Submitting a document that was never saved: Frappe's insert() runs
+        # before_submit BEFORE db_insert, so the source row does not exist yet.
+        # `Sales Price Approval Request.source_name` is a Dynamic Link, so
+        # building the request here dies on link validation with a bewildering
+        # "Could not find Source Name: <doc>". Ask for a draft instead — an
+        # approval request has to hang off a document the approver can open.
+        frappe.throw(
+            _("Price is below the minimum selling price on {0} line(s). "
+              "Save this as a draft first, then submit it — the approval "
+              "request has to be attached to a saved document.").format(len(violations)),
+            title=_("Save Before Submitting"),
+        )
+
     if existing_status == "Pending":
         frappe.throw(
             _("Price approval already pending on {0}.").format(

@@ -4,6 +4,21 @@ All notable changes to `fateh_support` are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] — 2026-08-16
+
+### Fixed
+
+- **"Could not find Source Name: RS-INV-…" when submitting a brand-new
+  invoice.** Frappe's `Document.insert()` runs `before_submit` before
+  `db_insert`, so the gate fires while the source row does not exist yet.
+  `Sales Price Approval Request.source_name` is a Dynamic Link, so building
+  the request died on link validation with a message naming an invoice the
+  user had never seen. Submitting an already-saved draft was unaffected,
+  which is why it looked intermittent.
+
+  The gate now detects the unsaved case and asks for a draft instead. Nothing
+  is persisted on that path — verified zero orphaned requests on production.
+
 ## [1.2.0] — 2026-08-16
 
 ### Added
@@ -113,6 +128,7 @@ All notable changes to `fateh_support` are recorded here. Format follows
 - First release: stock visibility PWA, below-cost approval workflow, Android
   shell.
 
+[1.2.1]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.2.1
 [1.2.0]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.2.0
 [1.1.2]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.2
 [1.1.1]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.1
