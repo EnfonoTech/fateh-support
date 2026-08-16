@@ -204,8 +204,14 @@ def reset_test_sandbox() -> dict[str, Any]:
     item = ensure_item("FATEH-TEST-001", valuation_rate=80.0)
     set_item_price(item, "Standard Selling", 150.0)
     set_item_price(item, cost_floor, 100.0)
-    viewer = ensure_user("fateh-viewer@example.com", ["Fateh Viewer"])
-    approver = ensure_user("fateh-approver@example.com", ["Price Approver", "Fateh Viewer"])
+    # Sales User grants Price List read. Real branch users get that through
+    # the Branch User role; without it `items.prices` filters every row out
+    # and the price tests assert against an empty set, which is what made
+    # them look like a permanent harness quirk.
+    viewer = ensure_user("fateh-viewer@example.com", ["Fateh Viewer", "Sales User"])
+    approver = ensure_user(
+        "fateh-approver@example.com", ["Price Approver", "Fateh Viewer", "Sales User"]
+    )
     requester = ensure_user("fateh-requester@example.com", ["Fateh Viewer", "Sales User"])
     configure_cost_floor(cost_floor)
     return {
