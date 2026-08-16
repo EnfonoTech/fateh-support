@@ -7,11 +7,16 @@
 //     what Frappe's binary response returns no matter what Content-Type the
 //     endpoint sets — the dynamic `api.pwa.sw` endpoint could never have been
 //     registered even once it stopped crashing.
-//   * A worker may only claim a scope at or below its own path, so it lives
-//     inside `/fateh/` and claims exactly that. It must NOT sit at the site
-//     root: damage_pwa registers a global `after_request` hook that stamps
-//     `Service-Worker-Allowed: /damage-pwa/` on every response, which would
-//     cap our max scope at another app's path.
+//   * A worker may only claim a scope at or below its own path. Living at the
+//     site root gives it a max scope of `/`, so it can claim `/fateh/` with
+//     no Service-Worker-Allowed header at all.
+//
+// The filename deliberately avoids the substring `sw.js`. damage_pwa ships a
+// global `after_request` hook that stamps `Service-Worker-Allowed:
+// /damage-pwa/` onto ANY response whose path contains `/sw` or `sw.js` — so a
+// worker named `fateh-sw.js` got another app's scope bolted onto it and was
+// refused. Renaming is the change that touches only this app; the substring
+// match in damage_pwa is the real defect and will bite the next PWA too.
 //
 // Nothing here needs the VAPID key: the page subscribes (it reads the key from
 // window.FatehBoot) and this worker only renders what the server pushes.

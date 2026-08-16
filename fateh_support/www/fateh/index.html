@@ -69,7 +69,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("/fateh/fateh-sw.js", { scope: "/fateh/" })
+          .register("/fateh-push-worker.js", { scope: "/fateh/" })
           .catch(function () {});
       }
     </script>
