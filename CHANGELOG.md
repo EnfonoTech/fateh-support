@@ -4,6 +4,25 @@ All notable changes to `fateh_support` are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] — 2026-08-16
+
+### Fixed
+
+- **App failed to boot with "Unhandled promise: t is not a function".** The
+  entry bundle ships under a stable `index.js` name and is cache-busted only by
+  a `?v=<mtime>` query, while the chunks it imports are content-hashed — and
+  `emptyOutDir: true` deleted the previous build's chunks on every rebuild. Any
+  client holding a cached entry (the Capacitor WebView above all, which had held
+  the May bundle for months) then requested chunk filenames that no longer
+  existed, every dynamic import 404'd, and the app died on the fallback screen.
+  Three rebuilds in one day is what made it bite.
+
+  Every chunk set shipped since May is restored to `public/frontend/chunks/`, so
+  cached entries resolve again with no action from the user. `emptyOutDir` is
+  now `false` — do not turn it back on while the entry name is stable. A boot
+  guard also catches dynamic-import failures and forces one reload, with a
+  sessionStorage latch so it cannot loop.
+
 ## [1.1.1] — 2026-08-16
 
 ### Added
@@ -79,6 +98,7 @@ All notable changes to `fateh_support` are recorded here. Format follows
 - First release: stock visibility PWA, below-cost approval workflow, Android
   shell.
 
+[1.1.2]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.2
 [1.1.1]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.1
 [1.1.0]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.1.0
 [1.0.1]: https://github.com/EnfonoTech/fateh-support/releases/tag/rmax-v1.0.1

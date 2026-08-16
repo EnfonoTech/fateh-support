@@ -13,7 +13,14 @@ export default defineConfig(function (_a) {
         },
         build: {
             outDir: path.resolve(__dirname, "../fateh_support/public/frontend"),
-            emptyOutDir: true,
+            // NEVER set this to true. The entry is a stable `index.js` cache-busted by
+            // a `?v=` query, so a browser (or the Capacitor WebView) can be holding an
+            // entry from an earlier deploy that imports the chunk hashes of that build.
+            // Wiping the directory deletes those chunks, the dynamic import 404s, and
+            // every cached client hard-fails on boot until it happens to refetch the
+            // entry. Old chunks are small; keeping them is the price of a stable entry
+            // name. Prune deliberately, well after a deploy has settled.
+            emptyOutDir: false,
             target: "es2020",
             cssCodeSplit: false,
             rollupOptions: {
