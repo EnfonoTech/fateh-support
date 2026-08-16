@@ -326,12 +326,20 @@ def prices(item_code: str) -> dict[str, Any]:
         order_by="price_list",
     )
 
-    # Drop cost-floor Price List rows for non-approvers.
+    # The minimum-price list is a selling tier, not cost, so branch users are
+    # shown it by default — a salesperson needs to know the floor they must
+    # not go under. Hiding it is opt-in via a setting, because this filter
+    # used to fire unconditionally: the moment `cost_floor_price_list` was
+    # first configured, Bulk Price silently vanished from every branch user's
+    # item screen even though nothing about that price had changed.
+    hide_minimum = cint(settings.get("hide_minimum_price_from_non_approvers"))
+
     # Always drop inter-company price lists.
     rows: list[dict[str, Any]] = []
     for r in raw:
         if (
             not is_approver
+            and hide_minimum
             and cost_floor_list
             and r.price_list
             and r.price_list.lower() == cost_floor_list.lower()

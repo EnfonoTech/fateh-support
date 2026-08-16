@@ -4,6 +4,24 @@ All notable changes to `fateh_support` are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] — 2026-08-16
+
+### Fixed
+
+- **Bulk Price disappeared from the item screen for branch users.** No code
+  changed: `items.prices` has always hidden whichever list is configured as
+  `cost_floor_price_list` from non-approvers, and that setting was empty
+  until it was first configured — at which point the filter began firing and
+  a price tier users had always seen silently vanished.
+
+  The minimum price is a *selling* tier, not cost: a salesperson needs to
+  know the floor they must not go under. It is now shown by default. Hiding
+  it is opt-in via the new
+  `Fateh Support Settings.hide_minimum_price_from_non_approvers`, off by
+  default, and approvers always see it.
+
+  Tests pin both directions so this cannot regress unnoticed again.
+
 ## [1.2.2] — 2026-08-16
 
 ### Fixed
@@ -151,6 +169,7 @@ All notable changes to `fateh_support` are recorded here. Format follows
 - First release: stock visibility PWA, below-cost approval workflow, Android
   shell.
 
+[1.2.3]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.2.3
 [1.2.2]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.2.2
 [1.2.1]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.2.1
 [1.2.0]: https://github.com/EnfonoTech/fateh-support/releases/tag/v1.2.0

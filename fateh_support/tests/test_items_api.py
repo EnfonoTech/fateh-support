@@ -43,3 +43,44 @@ class TestItemsApi(FrappeTestCase):
         frappe.set_user("Guest")
         with self.assertRaises(frappe.PermissionError):
             items_api.prices(item_code=self.ctx["item"])
+
+    def _set_hide_minimum(self, value: int) -> None:
+        settings = frappe.get_single("Fateh Support Settings")
+        settings.hide_minimum_price_from_non_approvers = value
+        settings.flags.ignore_permissions = True
+        settings.save(ignore_permissions=True)
+
+    def test_minimum_price_visible_to_viewers_by_default(self) -> None:
+        """Regression: configuring the floor list used to hide it from branch users.
+
+        The minimum price is a selling tier, not cost — a salesperson has to
+        see the floor they must not go under. It vanished from the app the
+        moment `cost_floor_price_list` was first set, with no code change and
+        no warning.
+        """
+        self._set_hide_minimum(0)
+        frappe.set_user(self.ctx["viewer"])
+        result = items_api.prices(item_code=self.ctx["item"])
+        price_lists = {r["price_list"] for r in result["rows"]}
+        self.assertIn(self.ctx["cost_floor"], price_lists)
+        self.assertFalse(result.get("is_approver"))
+
+    def test_minimum_price_hidden_when_the_setting_is_on(self) -> None:
+        self._set_hide_minimum(1)
+        try:
+            frappe.set_user(self.ctx["viewer"])
+            result = items_api.prices(item_code=self.ctx["item"])
+            self.assertNotIn(self.ctx["cost_floor"], {r["price_list"] for r in result["rows"]})
+        finally:
+            frappe.set_user("Administrator")
+            self._set_hide_minimum(0)
+
+    def test_approver_always_sees_the_minimum_price(self) -> None:
+        self._set_hide_minimum(1)
+        try:
+            frappe.set_user(self.ctx["approver"])
+            result = items_api.prices(item_code=self.ctx["item"])
+            self.assertIn(self.ctx["cost_floor"], {r["price_list"] for r in result["rows"]})
+        finally:
+            frappe.set_user("Administrator")
+            self._set_hide_minimum(0)
