@@ -254,3 +254,117 @@ class TestApprovalGateEndToEnd(FrappeTestCase):
         quotation.insert(ignore_permissions=True)
         self.assertEqual(quotation.docstatus, 1, "compliant document must submit")
 
+
+
+class TestDraftDeletionWithApprovalRequest(FrappeTestCase):
+    """A draft holding a price approval must be deletable.
+
+    The request Dynamic-Links back to its source, so Frappe's link guard
+    refused to delete the source and nothing cleaned the request up. Sixteen
+    draft Sales Invoices were stuck on production with no way forward.
+    """
+
+    def setUp(self) -> None:
+        self.ctx = reset_test_sandbox()
+
+    def _draft_below_floor(self):
+        quotation = frappe.get_doc({
+            "doctype": "Quotation",
+            "quotation_to": "Customer",
+            "party_name": self.ctx["customer"],
+            "company": self.ctx["company"],
+            "currency": "USD",
+            "conversion_rate": 1,
+            "selling_price_list": "Standard Selling",
+            "transaction_date": frappe.utils.nowdate(),
+            "items": [{
+                "item_code": self.ctx["item"], "qty": 1, "rate": 50.0,
+                "uom": "Nos", "conversion_factor": 1,
+            }],
+        })
+        quotation.docstatus = 1          # save("Submit") from a blank form
+        quotation.insert(ignore_permissions=True)
+        req = frappe.db.get_value("Quotation", quotation.name, "custom_approval_request")
+        self.assertTrue(req, "fixture must have raised a request")
+        return quotation, req
+
+    def test_pending_request_is_removed_and_the_draft_deletes(self) -> None:
+        quotation, req = self._draft_below_floor()
+
+        frappe.delete_doc("Quotation", quotation.name, ignore_permissions=True)
+
+        self.assertFalse(frappe.db.exists("Quotation", quotation.name))
+        self.assertFalse(
+            frappe.db.exists("Sales Price Approval Request", req),
+            "a pending request carries no decision and must go with the draft",
+        )
+
+    def test_approved_request_blocks_the_deletion(self) -> None:
+        """An approved request records who authorised a below-cost price."""
+        quotation, req = self._draft_below_floor()
+        frappe.db.set_value("Sales Price Approval Request", req, "status", "Approved")
+
+        with self.assertRaises(frappe.ValidationError):
+            frappe.delete_doc("Quotation", quotation.name, ignore_permissions=True)
+
+        self.assertTrue(frappe.db.exists("Quotation", quotation.name))
+        self.assertTrue(frappe.db.exists("Sales Price Approval Request", req))
+
+    def test_rejected_request_does_not_block(self) -> None:
+        quotation, req = self._draft_below_floor()
+        frappe.db.set_value("Sales Price Approval Request", req, "status", "Rejected")
+
+        frappe.delete_doc("Quotation", quotation.name, ignore_permissions=True)
+
+        self.assertFalse(frappe.db.exists("Quotation", quotation.name))
+        self.assertFalse(frappe.db.exists("Sales Price Approval Request", req))
+
+    def test_document_without_a_request_deletes_normally(self) -> None:
+        quotation = frappe.get_doc({
+            "doctype": "Quotation",
+            "quotation_to": "Customer",
+            "party_name": self.ctx["customer"],
+            "company": self.ctx["company"],
+            "currency": "USD",
+            "conversion_rate": 1,
+            "selling_price_list": "Standard Selling",
+            "transaction_date": frappe.utils.nowdate(),
+            "items": [{
+                "item_code": self.ctx["item"], "qty": 1, "rate": 150.0,
+                "uom": "Nos", "conversion_factor": 1,
+            }],
+        })
+        quotation.insert(ignore_permissions=True)
+        frappe.delete_doc("Quotation", quotation.name, ignore_permissions=True)
+        self.assertFalse(frappe.db.exists("Quotation", quotation.name))
+
+
+class TestViolationTable(FrappeTestCase):
+    """The message must name the offending items, not just count them."""
+
+    def test_table_names_each_item_and_its_shortfall(self) -> None:
+        from fateh_support.approvals.gate import _violation_table
+
+        html = _violation_table([
+            {"item_code": "WIDGET-1", "item_name": "Blue Widget", "qty": 3,
+             "proposed_rate": 80.0, "cost_floor_rate": 100.0},
+        ], "SAR")
+
+        self.assertIn("WIDGET-1", html)
+        self.assertIn("Blue Widget", html)
+        self.assertIn("20", html, "the shortfall of 20 must be shown")
+
+    def test_empty_violations_render_nothing(self) -> None:
+        from fateh_support.approvals.gate import _violation_table
+
+        self.assertEqual(_violation_table([], "SAR"), "")
+
+    def test_item_name_is_escaped(self) -> None:
+        from fateh_support.approvals.gate import _violation_table
+
+        html = _violation_table([
+            {"item_code": "X", "item_name": "<script>alert(1)</script>", "qty": 1,
+             "proposed_rate": 1.0, "cost_floor_rate": 2.0},
+        ], "SAR")
+
+        self.assertNotIn("<script>", html)
