@@ -115,7 +115,7 @@ def check_cost_floor(doc, method: str | None = None) -> None:
     if existing_status == "Pending":
         frappe.throw(
             _("Price approval already pending on {0}.").format(
-                frappe.get_desk_link("Sales Price Approval Request", existing)
+                _request_link(existing)
             )
         )
 
@@ -152,10 +152,26 @@ def check_cost_floor(doc, method: str | None = None) -> None:
         + _violation_table(violations, getattr(doc, "currency", None))
         + "<p>"
         + _("Approval request {0} raised.").format(
-            frappe.get_desk_link("Sales Price Approval Request", request.name)
+            _request_link(request.name)
         )
         + "</p>",
         title=_("Approval Required"),
+    )
+
+
+def _request_link(name: str) -> str:
+    """Link to a request, labelled with the REQUEST id.
+
+    Frappe's own desk-link helper labels the anchor from the doc's title
+    field, which on this doctype is the source document — so the message read
+    "Approval request Sales Price Approval Request INV-2026-00050 raised",
+    naming the invoice the operator is already looking at and never the
+    request itself.
+    """
+    safe = frappe.utils.escape_html(name)
+    return (
+        f'<a href="/app/sales-price-approval-request/{frappe.utils.quoted(name)}"'
+        f' style="font-weight:bold;">{safe}</a>'
     )
 
 
@@ -305,7 +321,7 @@ def release_request_on_trash(doc, method: str | None = None) -> None:
             ).format(
                 _(doc.doctype),
                 ", ".join(
-                    frappe.get_desk_link("Sales Price Approval Request", n) for n in approved
+                    _request_link(n) for n in approved
                 ),
             ),
             title=_("Approved Price Approval Exists"),
@@ -359,13 +375,18 @@ def raise_request_for_saved_draft(doc, method: str | None = None) -> None:
     doc.custom_approval_status = "Pending Approval"
     doc.custom_approval_request = request.name
 
+    # This is the path RMAX actually hits — save+submit straight from a blank
+    # form — so it needs the same itemised breakdown as the blocking throw.
     frappe.msgprint(
-        _("Price is below the minimum selling price on {0} line(s). "
-          "Saved as a draft and sent for approval: {1}. "
-          "Submit it once the request is approved.").format(
-            len(violations),
-            frappe.get_desk_link("Sales Price Approval Request", request.name),
-        ),
+        _("Price is below the minimum selling price on {0} of {1} line(s).").format(
+            len(violations), len(doc.get("items") or [])
+        )
+        + _violation_table(violations, getattr(doc, "currency", None))
+        + "<p>"
+        + _("Saved as a draft and sent for approval: {0}. Submit it once approved.").format(
+            _request_link(request.name)
+        )
+        + "</p>",
         title=_("Sent for Approval"),
         indicator="orange",
     )

@@ -368,3 +368,21 @@ class TestViolationTable(FrappeTestCase):
         ], "SAR")
 
         self.assertNotIn("<script>", html)
+
+
+class TestRequestLink(FrappeTestCase):
+    """The link must name the REQUEST, not the document it was raised from."""
+
+    def test_link_is_labelled_with_the_request_id(self) -> None:
+        from fateh_support.approvals.gate import _request_link
+
+        html = _request_link("SPAR-2026-00116")
+
+        self.assertIn("SPAR-2026-00116", html)
+        self.assertIn("/app/sales-price-approval-request/SPAR-2026-00116", html)
+        self.assertNotIn("INV-", html)
+
+    def test_name_is_escaped(self) -> None:
+        from fateh_support.approvals.gate import _request_link
+
+        self.assertNotIn("<script>", _request_link("<script>alert(1)</script>"))
