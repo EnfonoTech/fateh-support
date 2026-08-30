@@ -311,6 +311,18 @@ def release_request_on_trash(doc, method: str | None = None) -> None:
             title=_("Approved Price Approval Exists"),
         )
 
+    # The link runs BOTH ways: the request Dynamic-Links to its source, and the
+    # source's own `custom_approval_request` Link field points back at the
+    # request. Clearing the source side first is what lets the request go —
+    # otherwise the guard simply refuses in the other direction instead.
+    if frappe.get_meta(doc.doctype).get_field("custom_approval_request"):
+        frappe.db.set_value(
+            doc.doctype,
+            doc.name,
+            {"custom_approval_request": None, "custom_approval_status": None},
+            update_modified=False,
+        )
+
     for r in requests:
         frappe.delete_doc(
             "Sales Price Approval Request",
