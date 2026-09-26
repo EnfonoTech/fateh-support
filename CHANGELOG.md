@@ -4,6 +4,32 @@ All notable changes to `fateh_support` are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] — 2026-09-26
+
+### Fixed
+
+- **A draft holding a price-approval request could not be deleted.** Frappe's
+  `delete_doc` runs `on_trash` before it checks what the document is linked to,
+  so the request and the draft each held the other and neither would go. The
+  source-side `custom_approval_request` is now cleared before the request is
+  released. A request that has already been **Approved** still blocks the
+  delete; Pending and Rejected ones are released silently, as asked.
+
+- **The below-cost message now names the items it objects to**, on the draft
+  path as well as on submit. It previously said only that something was under
+  the floor, leaving the approver to open the document to find out what.
+
+- Approval links carry the request id, so a notification identifies which
+  request it belongs to.
+
+## [1.3.0] — 2026-08-16
+
+### Added
+
+- Invoice gate keeps the draft rather than discarding the operator's work, and
+  push notifications work. Released without a changelog entry at the time;
+  recorded here for completeness.
+
 ## [1.2.3] — 2026-08-16
 
 ### Fixed
