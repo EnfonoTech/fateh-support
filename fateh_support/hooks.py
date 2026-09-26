@@ -29,6 +29,9 @@ _APPROVAL_GATE = {
     # Raises the request for a document the gate had to save as a draft,
     # because before_submit runs before the row exists.
     "after_insert": "fateh_support.approvals.gate.raise_request_for_saved_draft",
+    # Frees the draft for deletion. The request Dynamic-Links back to its
+    # source, so without this the link guard refuses and the operator is stuck.
+    "on_trash": "fateh_support.approvals.gate.release_request_on_trash",
 }
 
 doc_events = {

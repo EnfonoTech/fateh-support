@@ -17,6 +17,7 @@ from typing import Any
 
 import frappe
 from frappe import _
+from frappe.utils import flt, fmt_money
 
 
 def _get_applicable_price_list(doc, settings) -> str:
@@ -114,7 +115,7 @@ def check_cost_floor(doc, method: str | None = None) -> None:
     if existing_status == "Pending":
         frappe.throw(
             _("Price approval already pending on {0}.").format(
-                frappe.get_desk_link("Sales Price Approval Request", existing)
+                _request_link(existing)
             )
         )
 
@@ -145,10 +146,79 @@ def check_cost_floor(doc, method: str | None = None) -> None:
     frappe.db.commit()
 
     frappe.throw(
-        _("Price is below the minimum selling price on {0} line(s). Approval request {1} raised.").format(
-            len(violations),
-            frappe.get_desk_link("Sales Price Approval Request", request.name),
+        _("Price is below the minimum selling price on {0} of {1} line(s).").format(
+            len(violations), len(doc.get("items") or [])
         )
+        + _violation_table(violations, getattr(doc, "currency", None))
+        + "<p>"
+        + _("Approval request {0} raised.").format(
+            _request_link(request.name)
+        )
+        + "</p>",
+        title=_("Approval Required"),
+    )
+
+
+def _request_link(name: str) -> str:
+    """Link to a request, labelled with the REQUEST id.
+
+    Frappe's own desk-link helper labels the anchor from the doc's title
+    field, which on this doctype is the source document — so the message read
+    "Approval request Sales Price Approval Request INV-2026-00050 raised",
+    naming the invoice the operator is already looking at and never the
+    request itself.
+    """
+    safe = frappe.utils.escape_html(name)
+    return (
+        f'<a href="/app/sales-price-approval-request/{frappe.utils.quoted(name)}"'
+        f' style="font-weight:bold;">{safe}</a>'
+    )
+
+
+def _violation_table(violations: list[dict[str, Any]], currency: str | None = None) -> str:
+    """Name the offending items, with the shortfall on each.
+
+    The message used to give a count and nothing else. On an order of twenty
+    lines with one below floor, the salesperson had no way to tell WHICH one
+    without opening the approval request — and multi-line requests are common:
+    89 of the 408 raised on production carry two or more lines, one of them 46.
+
+    Every figure here is already gathered by `_collect_violations`; it was
+    simply never shown.
+    """
+    if not violations:
+        return ""
+
+    cur = frappe.utils.escape_html(currency or "")
+    head = "".join(
+        f"<th style='text-align:{align}; padding:4px 8px;'>{label}</th>"
+        for label, align in (
+            (_("Item"), "left"), (_("Qty"), "right"),
+            (_("Your Rate"), "right"), (_("Minimum"), "right"), (_("Short By"), "right"),
+        )
+    )
+
+    rows = []
+    for v in violations:
+        short = flt(v["cost_floor_rate"]) - flt(v["proposed_rate"])
+        label = frappe.utils.escape_html(v["item_code"])
+        name = frappe.utils.escape_html(v.get("item_name") or "")
+        if name and name != v["item_code"]:
+            label += f"<div style='font-size:0.85em; color:#6b7280;'>{name}</div>"
+        rows.append(
+            "<tr>"
+            f"<td style='padding:4px 8px;'>{label}</td>"
+            f"<td style='text-align:right; padding:4px 8px;'>{flt(v.get('qty')):g}</td>"
+            f"<td style='text-align:right; padding:4px 8px;'>{fmt_money(v['proposed_rate'], currency=cur)}</td>"
+            f"<td style='text-align:right; padding:4px 8px;'>{fmt_money(v['cost_floor_rate'], currency=cur)}</td>"
+            f"<td style='text-align:right; padding:4px 8px; color:#b82a20; font-weight:600;'>"
+            f"{fmt_money(short, currency=cur)}</td>"
+            "</tr>"
+        )
+
+    return (
+        "<table class='table table-bordered table-sm' style='margin-top:10px;'>"
+        f"<thead><tr>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table>"
     )
 
 
@@ -214,6 +284,70 @@ def _build_request(doc, violations: list[dict[str, Any]]):
     return req
 
 
+def release_request_on_trash(doc, method: str | None = None) -> None:
+    """`on_trash` hook. Clear the approval request so the draft can be deleted.
+
+    The request points back at its source through `source_name`, a Dynamic
+    Link, so Frappe's link guard refuses to delete the source document while
+    the request exists — and nothing ever cleaned it up. Sixteen draft Sales
+    Invoices were stuck on production because of it, with no way forward
+    except deleting the request by hand first.
+
+    Frappe runs `on_trash` BEFORE `check_if_doc_is_linked`
+    (`frappe/model/delete_doc.py`, lines 126 and 133), so removing the request
+    here clears the link in time.
+
+    An APPROVED request is not removed. Someone made a pricing decision and it
+    is the audit record of that decision; deleting the invoice under it would
+    destroy the evidence silently. Those are blocked with an explanation.
+    Pending and Rejected requests carry no decision worth keeping and go
+    quietly.
+    """
+    requests = frappe.get_all(
+        "Sales Price Approval Request",
+        filters={"source_doctype": doc.doctype, "source_name": doc.name},
+        fields=["name", "status"],
+    )
+    if not requests:
+        return
+
+    approved = [r.name for r in requests if r.status == "Approved"]
+    if approved:
+        frappe.throw(
+            _(
+                "This {0} carries an approved price approval ({1}), which records who "
+                "authorised the below-cost price. Cancel or reject that request first "
+                "if the document really has to go."
+            ).format(
+                _(doc.doctype),
+                ", ".join(
+                    _request_link(n) for n in approved
+                ),
+            ),
+            title=_("Approved Price Approval Exists"),
+        )
+
+    # The link runs BOTH ways: the request Dynamic-Links to its source, and the
+    # source's own `custom_approval_request` Link field points back at the
+    # request. Clearing the source side first is what lets the request go —
+    # otherwise the guard simply refuses in the other direction instead.
+    if frappe.get_meta(doc.doctype).get_field("custom_approval_request"):
+        frappe.db.set_value(
+            doc.doctype,
+            doc.name,
+            {"custom_approval_request": None, "custom_approval_status": None},
+            update_modified=False,
+        )
+
+    for r in requests:
+        frappe.delete_doc(
+            "Sales Price Approval Request",
+            r.name,
+            ignore_permissions=True,
+            delete_permanently=True,
+        )
+
+
 def raise_request_for_saved_draft(doc, method: str | None = None) -> None:
     """`after_insert` hook — finish the work `check_cost_floor` deferred.
 
@@ -241,13 +375,18 @@ def raise_request_for_saved_draft(doc, method: str | None = None) -> None:
     doc.custom_approval_status = "Pending Approval"
     doc.custom_approval_request = request.name
 
+    # This is the path RMAX actually hits — save+submit straight from a blank
+    # form — so it needs the same itemised breakdown as the blocking throw.
     frappe.msgprint(
-        _("Price is below the minimum selling price on {0} line(s). "
-          "Saved as a draft and sent for approval: {1}. "
-          "Submit it once the request is approved.").format(
-            len(violations),
-            frappe.get_desk_link("Sales Price Approval Request", request.name),
-        ),
+        _("Price is below the minimum selling price on {0} of {1} line(s).").format(
+            len(violations), len(doc.get("items") or [])
+        )
+        + _violation_table(violations, getattr(doc, "currency", None))
+        + "<p>"
+        + _("Saved as a draft and sent for approval: {0}. Submit it once approved.").format(
+            _request_link(request.name)
+        )
+        + "</p>",
         title=_("Sent for Approval"),
         indicator="orange",
     )
