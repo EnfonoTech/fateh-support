@@ -8,10 +8,12 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
+from fateh_support.approvals.roles import VIEWER_ROLES, all_approver_roles
+
 
 def _require_viewer() -> None:
     roles = set(frappe.get_roles(frappe.session.user))
-    if roles.isdisjoint({"Fateh Viewer", "Price Approver", "System Manager"}):
+    if roles.isdisjoint(set(VIEWER_ROLES) | all_approver_roles()):
         frappe.throw(_("Not authorised"), frappe.PermissionError)
 
 
@@ -334,6 +336,11 @@ def prices(item_code: str) -> dict[str, Any]:
     # item screen even though nothing about that price had changed.
     hide_minimum = cint(settings.get("hide_minimum_price_from_non_approvers"))
 
+    # Only price lists ticked "Show in Fateh App" (Price List form).
+    shown_lists = set(
+        frappe.get_all("Price List", filters={"custom_show_in_fateh_app": 1}, pluck="name")
+    )
+
     # Always drop inter-company price lists.
     rows: list[dict[str, Any]] = []
     for r in raw:
@@ -346,6 +353,8 @@ def prices(item_code: str) -> dict[str, Any]:
         ):
             continue
         if r.price_list and "inter" in r.price_list.lower():
+            continue
+        if r.price_list not in shown_lists:
             continue
         if not frappe.has_permission("Price List", ptype="read", doc=r.price_list):
             continue

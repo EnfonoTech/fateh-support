@@ -4,6 +4,24 @@ All notable changes to `fateh_support` are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] — 2026-11-06
+
+### Added
+- **Credit approval in the app.** Approval requests now have a type: Price or
+  Credit Limit. Credit requests (raised by the site's credit gate when a Sales
+  Invoice or Delivery Note goes over the customer's limit unpaid) show the
+  limit, current outstanding, this document, paid now and the new total owed,
+  and go only to **Credit Approvers**; price requests stay with Price
+  Approvers. Approving sets the document's credit fields so the requester can
+  submit it. Credit Approvers can log in and see the Approvals tab.
+- **Price List > Show in Fateh App.** The item screen lists only ticked price
+  lists. On upgrade every selling list the app showed before (all but
+  inter-company lists) is ticked, so nothing disappears until unticked.
+
+### Changed
+- Permissions, inbox counts and push / email / realtime notifications are
+  routed by request type (`approvals/roles.py`).
+
 ## [1.3.1] — 2026-09-26
 
 ### Fixed

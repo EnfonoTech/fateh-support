@@ -64,7 +64,7 @@
     "filter_mine": "Mine",
     "empty_state": "No requests match this filter.",
     "search_placeholder": "Search by quotation / order no.",
-    "empty_search": "No requests found for \u201c{q}\u201d.",
+    "empty_search": "No requests found for “{q}”.",
     "view": "View details",
     "requester": "Requester",
     "customer": "Customer",
@@ -91,7 +91,13 @@
     "decided_by": "Decided by",
     "age": "Age",
     "variance_high": "High variance",
-    "attach_justification": "Attach a justification"
+    "attach_justification": "Attach a justification",
+    "credit_request": "Credit over limit",
+    "credit_limit": "Credit limit",
+    "customer_outstanding": "Outstanding now",
+    "document_amount": "This document",
+    "paid_now": "Paid now",
+    "new_exposure": "New total owed"
   },
   "my_requests": {
     "empty_state": "You haven't raised any requests yet.",

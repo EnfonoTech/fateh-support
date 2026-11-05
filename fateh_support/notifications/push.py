@@ -54,16 +54,9 @@ def fanout_to_approvers(doc) -> None:
         "tag": f"approval:{doc.name}",
     }
 
-    approver_users = frappe.db.sql_list(
-        """
-        SELECT DISTINCT `tabHas Role`.parent
-        FROM `tabHas Role`
-        JOIN `tabUser` u ON u.name = `tabHas Role`.parent
-        WHERE `tabHas Role`.role IN ('Price Approver', 'System Manager')
-          AND u.enabled = 1
-          AND u.user_type != 'Website User'
-        """
-    )
+    from fateh_support.approvals.roles import approver_users as _approver_users, request_type_of
+
+    approver_users = _approver_users(request_type_of(doc))
     if not approver_users:
         return
     _send_to_users(approver_users, payload, settings)
@@ -124,6 +117,8 @@ def _send_to_users(users: list[str], payload: dict[str, Any], settings) -> None:
 
 
 def title_for_new_request(doc) -> str:
+    if (doc.get("request_type") or "Price") == "Credit Limit":
+        return f"Credit approval ({doc.currency or ''} {float(doc.document_amount or 0):,.2f})"
     try:
         pct = abs(float(doc.variance_pct or 0))
     except Exception:

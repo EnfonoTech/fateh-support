@@ -64,7 +64,7 @@
     "filter_mine": "طلباتي",
     "empty_state": "لا توجد طلبات مطابقة.",
     "search_placeholder": "ابحث برقم عرض السعر / الطلب",
-    "empty_search": "لا توجد طلبات لـ \u201c{q}\u201d.",
+    "empty_search": "لا توجد طلبات لـ “{q}”.",
     "view": "عرض التفاصيل",
     "requester": "مقدم الطلب",
     "customer": "العميل",
@@ -91,7 +91,13 @@
     "decided_by": "صاحب القرار",
     "age": "المدة",
     "variance_high": "فارق كبير",
-    "attach_justification": "إضافة مبرر"
+    "attach_justification": "إضافة مبرر",
+    "credit_request": "تجاوز حد الائتمان",
+    "credit_limit": "حد الائتمان",
+    "customer_outstanding": "الرصيد المستحق الحالي",
+    "document_amount": "هذا المستند",
+    "paid_now": "المدفوع الآن",
+    "new_exposure": "إجمالي المستحق الجديد"
   },
   "my_requests": {
     "empty_state": "لم ترفع أي طلبات بعد.",

@@ -26,6 +26,7 @@ const sheetAction = ref<"approve" | "reject">("approve");
 const submitting = ref(false);
 
 const detail = computed(() => approvals.detail);
+const isCredit = computed(() => detail.value?.request_type === "Credit Limit");
 
 function open(action: "approve" | "reject") {
   sheetAction.value = action;
@@ -58,7 +59,17 @@ async function confirm(note: string) {
         </div>
         <span class="badge" :class="detail.status.toLowerCase()">{{ detail.status }}</span>
       </div>
+      <table v-if="isCredit" class="data">
+        <tbody>
+          <tr><td>{{ $t("approvals.credit_limit") }}</td><td class="text-right"><Money :value="detail.credit_limit || 0" :currency="detail.currency" /></td></tr>
+          <tr><td>{{ $t("approvals.customer_outstanding") }}</td><td class="text-right"><Money :value="detail.customer_outstanding || 0" :currency="detail.currency" /></td></tr>
+          <tr><td>{{ $t("approvals.document_amount") }}</td><td class="text-right"><Money :value="detail.document_amount || 0" :currency="detail.currency" /></td></tr>
+          <tr><td>{{ $t("approvals.paid_now") }}</td><td class="text-right"><Money :value="detail.paid_now || 0" :currency="detail.currency" /></td></tr>
+          <tr><td><strong>{{ $t("approvals.new_exposure") }}</strong></td><td class="text-right"><strong class="text-danger"><Money :value="detail.new_exposure || 0" :currency="detail.currency" /></strong></td></tr>
+        </tbody>
+      </table>
       <VarianceBanner
+        v-else
         :variance-pct="detail.variance_pct"
         :variance-amount="detail.variance_amount"
         :currency="detail.currency"
@@ -84,7 +95,7 @@ async function confirm(note: string) {
     </div>
     <div class="card text-muted" v-else>{{ $t("approvals.no_justification") }}</div>
 
-    <div class="card stack">
+    <div class="card stack" v-if="!isCredit">
       <strong>{{ $t("approvals.lines") }}</strong>
       <table class="data">
         <thead>

@@ -9,6 +9,8 @@ from frappe import _
 from frappe.auth import LoginManager
 from frappe.utils.password import get_decrypted_password
 
+from fateh_support.approvals.roles import VIEWER_ROLES, all_approver_roles
+
 try:
     import bcrypt  # type: ignore
 except ImportError:  # pragma: no cover
@@ -40,8 +42,9 @@ def _profile_payload(user: str) -> dict[str, Any]:
         "email": user_doc.email,
         "language": user_doc.language or "en",
         "roles": sorted(roles),
-        "is_approver": "Price Approver" in roles or "System Manager" in roles,
-        "is_viewer": "Fateh Viewer" in roles or "Price Approver" in roles or "System Manager" in roles,
+        # Approver of either kind (price or credit): opens the Approvals tab.
+        "is_approver": bool(roles & all_approver_roles()),
+        "is_viewer": bool(roles & (set(VIEWER_ROLES) | all_approver_roles())),
         "branding": branding_api.get(),
     }
 
@@ -132,7 +135,7 @@ def pin_login(email: str, pin: str) -> dict[str, Any]:
 
     user_doc = frappe.get_doc("User", user_name)
     roles = set(frappe.get_roles(user_name))
-    if not (roles & {"Fateh Viewer", "Price Approver", "System Manager"}):
+    if not (roles & (set(VIEWER_ROLES) | all_approver_roles())):
         frappe.throw(_("Not authorised for this app"), frappe.PermissionError)
 
     existing_secret = None

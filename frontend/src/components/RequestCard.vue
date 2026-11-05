@@ -23,7 +23,20 @@ function statusClass(status: string) {
       </div>
       <span class="badge" :class="statusClass(row.status)">{{ row.status }}</span>
     </div>
-    <div class="row between" style="margin-top: var(--space-3)">
+    <div v-if="row.request_type === 'Credit Limit'" class="row between" style="margin-top: var(--space-3)">
+      <div>
+        <div class="text-muted" style="font-size: 12px">{{ $t("approvals.credit_request") }}</div>
+        <div class="row tight">
+          <Money :value="row.new_exposure || 0" :currency="row.currency" />
+          <small class="text-muted">/ <Money :value="row.credit_limit || 0" :currency="row.currency" /></small>
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="text-muted" style="font-size: 12px">{{ $t("approvals.age") }}</div>
+        <div>{{ formatAge(row.age_seconds, prefs.locale) }}</div>
+      </div>
+    </div>
+    <div v-else class="row between" style="margin-top: var(--space-3)">
       <div>
         <div class="text-muted" style="font-size: 12px">{{ $t("approvals.variance") }}</div>
         <div class="row tight">

@@ -89,6 +89,12 @@ export interface ApprovalLine {
 }
 
 export interface ApprovalRequest {
+  request_type?: "Price" | "Credit Limit";
+  credit_limit?: number;
+  customer_outstanding?: number;
+  document_amount?: number;
+  paid_now?: number;
+  new_exposure?: number;
   name: string;
   status: "Pending" | "Approved" | "Rejected";
   requester: string;
@@ -115,6 +121,12 @@ export interface ApprovalRequest {
 }
 
 export interface ApprovalListRow {
+  request_type?: "Price" | "Credit Limit";
+  credit_limit?: number;
+  customer_outstanding?: number;
+  document_amount?: number;
+  paid_now?: number;
+  new_exposure?: number;
   name: string;
   status: "Pending" | "Approved" | "Rejected";
   requester: string;

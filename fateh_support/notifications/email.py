@@ -50,23 +50,17 @@ def notify_approvers(doc) -> None:
     if not cint(settings.get("email_on_request_created")):
         return
 
-    approvers = frappe.db.sql_list(
-        """
-        SELECT DISTINCT u.email
-        FROM `tabHas Role` hr
-        JOIN `tabUser` u ON u.name = hr.parent
-        WHERE hr.role IN ('Price Approver', 'System Manager')
-          AND u.enabled = 1
-          AND u.user_type != 'Website User'
-          AND u.email IS NOT NULL
-          AND u.email != ''
-        """
-    )
+    from fateh_support.approvals.roles import approver_emails, request_type_of
+
+    approvers = approver_emails(request_type_of(doc))
     recipients = list(dict.fromkeys(list(approvers) + _extra_recipients(settings)))
     if not recipients:
         return
 
-    subject = frappe._("Below-cost approval request — {0}").format(doc.source_name or "")
+    if (doc.get("request_type") or "Price") == "Credit Limit":
+        subject = frappe._("Credit approval request — {0}").format(doc.source_name or "")
+    else:
+        subject = frappe._("Below-cost approval request — {0}").format(doc.source_name or "")
     _safe_send(recipients, subject, _approver_body(doc))
 
 
@@ -91,6 +85,21 @@ def notify_requester(doc) -> None:
 def _approver_body(doc) -> str:
     requester = frappe.db.get_value("User", doc.requester, "full_name") or doc.requester
     url = f"{get_url()}/fateh/#/approvals/{doc.name}"
+    if (doc.get("request_type") or "Price") == "Credit Limit":
+        cur = doc.currency or ""
+        return (
+            f"<p>A new credit approval request is waiting.</p>"
+            f"<ul>"
+            f"<li><b>Requester:</b> {frappe.utils.escape_html(requester)}</li>"
+            f"<li><b>Customer:</b> {frappe.utils.escape_html(doc.customer or '')}</li>"
+            f"<li><b>Source:</b> {doc.source_doctype} {doc.source_name}</li>"
+            f"<li><b>Credit limit:</b> {cur} {doc.credit_limit or 0:,.2f}</li>"
+            f"<li><b>Outstanding:</b> {cur} {doc.customer_outstanding or 0:,.2f}</li>"
+            f"<li><b>This document:</b> {cur} {doc.document_amount or 0:,.2f} (paid now {doc.paid_now or 0:,.2f})</li>"
+            f"<li><b>New exposure:</b> {cur} {doc.new_exposure or 0:,.2f}</li>"
+            f"</ul>"
+            f"<p><a href='{url}'>Open in app</a></p>"
+        )
     return (
         f"<p>A new below-cost approval request is waiting.</p>"
         f"<ul>"

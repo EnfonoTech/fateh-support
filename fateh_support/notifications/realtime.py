@@ -13,6 +13,7 @@ def _payload(doc) -> dict[str, Any]:
     return {
         "name": doc.name,
         "status": doc.status,
+        "request_type": doc.get("request_type") or "Price",
         "requester": doc.requester,
         "customer": doc.customer,
         "source_doctype": doc.source_doctype,
@@ -24,7 +25,7 @@ def _payload(doc) -> dict[str, Any]:
 
 def publish_approval_created(doc) -> None:
     payload = _payload(doc)
-    for approver in _approver_users():
+    for approver in _approver_users(doc):
         frappe.publish_realtime(event=EVENT_NAME, message=payload, user=approver)
 
 
@@ -36,17 +37,7 @@ def publish_approval_decided(doc) -> None:
         frappe.publish_realtime(event=EVENT_NAME, message=payload, user=doc.approver)
 
 
-def _approver_users() -> list[str]:
-    return [
-        u[0]
-        for u in frappe.db.sql(
-            """
-            SELECT DISTINCT `tabHas Role`.parent
-            FROM `tabHas Role`
-            JOIN `tabUser` u ON u.name = `tabHas Role`.parent
-            WHERE `tabHas Role`.role IN ('Price Approver', 'System Manager')
-              AND u.enabled = 1
-              AND u.user_type != 'Website User'
-            """
-        )
-    ]
+def _approver_users(doc=None) -> list[str]:
+    from fateh_support.approvals.roles import approver_users, request_type_of
+
+    return approver_users(request_type_of(doc))

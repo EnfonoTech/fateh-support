@@ -7,24 +7,40 @@ from typing import Any
 
 import frappe
 from frappe import _
-from frappe.utils import cint, cstr, now_datetime
+from frappe.utils import cint, cstr, flt, now_datetime
+
+from fateh_support.approvals.roles import (
+    CREDIT,
+    VIEWER_ROLES,
+    all_approver_roles,
+    can_approve,
+    request_type_of,
+    types_user_can_approve,
+)
 
 
 def _is_approver(user: str | None = None) -> bool:
-    user = user or frappe.session.user
-    roles = set(frappe.get_roles(user))
-    return bool(roles & {"Price Approver", "System Manager"})
+    """Approver of at least one request type (price or credit)."""
+    return bool(types_user_can_approve(user))
 
 
 def _require_viewer() -> None:
     roles = set(frappe.get_roles(frappe.session.user))
-    if roles.isdisjoint({"Fateh Viewer", "Price Approver", "System Manager"}):
+    if roles.isdisjoint(set(VIEWER_ROLES) | all_approver_roles()):
         frappe.throw(_("Not authorised"), frappe.PermissionError)
 
 
-def _require_approver() -> None:
-    if not _is_approver():
+def _require_approver(request_type: str | None = None) -> None:
+    ok = can_approve(request_type) if request_type else _is_approver()
+    if not ok:
         frappe.throw(_("Approver role required"), frappe.PermissionError)
+
+
+def _approver_filter(filters: dict[str, Any]) -> None:
+    """Limit an approver's inbox to the request types they decide."""
+    types = types_user_can_approve()
+    if len(types) == 1:
+        filters["request_type"] = types[0]
 
 
 @frappe.whitelist()
@@ -45,6 +61,8 @@ def list_requests(
         filters["status"] = status
     if mine_flag or not _is_approver():
         filters["requester"] = frappe.session.user
+    else:
+        _approver_filter(filters)
     if search:
         filters["source_name"] = ["like", f"%{search}%"]
 
@@ -54,6 +72,7 @@ def list_requests(
         fields=[
             "name",
             "status",
+            "request_type",
             "requester",
             "requested_at",
             "customer",
@@ -65,6 +84,11 @@ def list_requests(
             "line_total_impact",
             "approver",
             "decided_at",
+            "credit_limit",
+            "customer_outstanding",
+            "document_amount",
+            "paid_now",
+            "new_exposure",
         ],
         order_by="requested_at desc, creation desc",
         limit=limit,
@@ -105,11 +129,12 @@ def get(name: str) -> dict[str, Any]:
         frappe.throw(_("name is required"))
 
     doc = frappe.get_doc("Sales Price Approval Request", name)
-    if not (_is_approver() or doc.requester == frappe.session.user):
+    may_decide = can_approve(request_type_of(doc))
+    if not (may_decide or doc.requester == frappe.session.user):
         frappe.throw(_("Not authorised for this request"), frappe.PermissionError)
 
     settings = frappe.get_cached_doc("Fateh Support Settings")
-    show_cost = _is_approver() and cint(settings.get("show_valuation_to_approvers"))
+    show_cost = may_decide and cint(settings.get("show_valuation_to_approvers"))
 
     lines = []
     for line in doc.lines or []:
@@ -135,6 +160,12 @@ def get(name: str) -> dict[str, Any]:
     return {
         "name": doc.name,
         "status": doc.status,
+        "request_type": request_type_of(doc),
+        "credit_limit": flt(doc.get("credit_limit")),
+        "customer_outstanding": flt(doc.get("customer_outstanding")),
+        "document_amount": flt(doc.get("document_amount")),
+        "paid_now": flt(doc.get("paid_now")),
+        "new_exposure": flt(doc.get("new_exposure")),
         "requester": doc.requester,
         "requester_full_name": frappe.db.get_value("User", doc.requester, "full_name") or doc.requester,
         "requested_at": doc.requested_at,
@@ -155,7 +186,7 @@ def get(name: str) -> dict[str, Any]:
         "approver_full_name": frappe.db.get_value("User", doc.approver, "full_name") if doc.approver else None,
         "decided_at": doc.decided_at,
         "decision_note": doc.decision_note,
-        "can_decide": _is_approver() and doc.status == "Pending",
+        "can_decide": may_decide and doc.status == "Pending",
     }
 
 
@@ -178,6 +209,7 @@ def decide(name: str, action: str, note: str = "") -> dict[str, Any]:
         frappe.throw(_("A rejection note is required."))
 
     doc = frappe.get_doc("Sales Price Approval Request", name)
+    _require_approver(request_type_of(doc))
     if doc.status != "Pending":
         frappe.throw(_("This request has already been decided."))
 
@@ -195,8 +227,26 @@ def decide(name: str, action: str, note: str = "") -> dict[str, Any]:
 
 
 def _apply_decision_to_source(doc) -> None:
-    """Flip the custom approval fields on the source Quotation / Sales Order."""
+    """Flip the approval fields on the source document.
+
+    Credit requests set the credit fields; the approved amount is the
+    document total at request time, and a document raised above it later
+    needs a fresh approval (checked by the credit gate).
+    """
     if not (doc.source_doctype and doc.source_name):
+        return
+    if request_type_of(doc) == CREDIT:
+        approved = doc.status == "Approved"
+        frappe.db.set_value(
+            doc.source_doctype,
+            doc.source_name,
+            {
+                "custom_credit_approval_status": "Approved" if approved else "Rejected",
+                "custom_credit_approved_amount": flt(doc.document_amount) if approved else 0,
+                "custom_credit_approval_approver": doc.approver,
+            },
+            update_modified=False,
+        )
         return
     updates = {
         "custom_approval_status": "Approved" if doc.status == "Approved" else "Rejected",
@@ -269,5 +319,7 @@ def pending_count() -> dict[str, int]:
             filters={"requester": frappe.session.user, "status": "Pending"},
         )
     else:
-        count = frappe.db.count("Sales Price Approval Request", filters={"status": "Pending"})
+        filters: dict[str, Any] = {"status": "Pending"}
+        _approver_filter(filters)
+        count = frappe.db.count("Sales Price Approval Request", filters=filters)
     return {"count": int(count)}
